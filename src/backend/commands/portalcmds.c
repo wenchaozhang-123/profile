@@ -198,6 +198,14 @@ PerformCursorOpen(ParseState *pstate, DeclareCursorStmt *cstmt, ParamListInfo pa
 	 * We're done; the query won't actually be run until PerformPortalFetch is
 	 * called.
 	 */
+
+	/*
+	 * TODO: parallel scroll cursor comments
+	 */
+	if (PortalIsParallelRetrieveCursor(portal) && PortalIsScrollCursor(portal))
+	{
+		PortalCreateHoldStore(portal);
+	}
 }
 
 /*

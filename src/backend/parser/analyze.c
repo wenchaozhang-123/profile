@@ -3265,11 +3265,11 @@ transformDeclareCursorStmt(ParseState *pstate, DeclareCursorStmt *stmt)
 				 errmsg("DECLARE PARALLEL RETRIEVE CURSOR WITH HOLD ... is not supported"),
 				 errdetail("Holdable cursors can not be parallel")));
 
-	if ((stmt->options & CURSOR_OPT_SCROLL) && (stmt->options & CURSOR_OPT_PARALLEL_RETRIEVE))
-		ereport(ERROR,
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("SCROLL is not allowed for the PARALLEL RETRIEVE CURSORs"),
-				 errdetail("Scrollable cursors can not be parallel")));
+	//if ((stmt->options & CURSOR_OPT_SCROLL) && (stmt->options & CURSOR_OPT_PARALLEL_RETRIEVE))
+	//	ereport(ERROR,
+	//			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+	//			 errmsg("SCROLL is not allowed for the PARALLEL RETRIEVE CURSORs"),
+	//			 errdetail("Scrollable cursors can not be parallel")));
 
 	/*
 	 * We also disallow data-modifying WITH in a cursor.  (This could be
