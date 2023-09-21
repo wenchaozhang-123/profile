@@ -226,6 +226,8 @@ table_parallelscan_initialize(Relation rel, ParallelTableScanDesc pscan,
 		}
 		
 	}
+	// TODO add hook to process storage_am
+
 }
 
 TableScanDesc

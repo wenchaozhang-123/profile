@@ -110,6 +110,8 @@ SeqNext(SeqScanState *node)
 				scandesc = table_beginscan_parallel(node->ss.ss_currentRelation, pscan);
 			}
 
+			//TODO maybe should add hook like table_beginscan_es
+
 			node->ss.ss_currentScanDesc = scandesc;
 		}
 		else
