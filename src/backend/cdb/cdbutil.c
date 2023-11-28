@@ -79,7 +79,7 @@
 #define GPSEGCONFIGDUMPFILETMP "gpsegconfig_dump_tmp"
 
 MemoryContext CdbComponentsContext = NULL;
-static CdbComponentDatabases *cdb_component_dbs = NULL;
+CdbComponentDatabases *cdb_component_dbs = NULL;
 
 /*
  * Hook for plugins to get control in getgpsegmentCount.

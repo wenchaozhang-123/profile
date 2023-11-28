@@ -38,6 +38,7 @@ extern char *gp_etcd_cluster_id;
 extern char *gp_etcd_namespace;
 extern char *gp_etcd_endpoints;
 extern char *gp_cbdb_deploy;
+extern CdbComponentDatabases *cdb_component_dbs;
 
 typedef struct GpSegConfigEntryForUDF
 {
