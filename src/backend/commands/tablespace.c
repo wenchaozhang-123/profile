@@ -95,6 +95,7 @@
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
+#include "utils/spccache.h"
 #include "utils/tarrable.h"
 #include "utils/varlena.h"
 
@@ -269,6 +270,9 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 	Oid			ownerId;
 	Datum		newOptions;
 	List       *nonContentOptions = NIL;
+
+	if (IsDfsTableSpaceStmt(stmt))
+		return DfsCreateTableSpace(stmt);
 
 	/* Must be super user */
 	if (!superuser())
@@ -622,6 +626,12 @@ DropTableSpace(DropTableSpaceStmt *stmt)
 	Oid			tablespaceoid;
 	char	   *detail;
 	char	   *detail_log;
+
+	if (IsDfsTablespaceByName(stmt->tablespacename))
+	{
+		DfsDropTableSpace(stmt);
+		return;
+	}
 
 	/*
 	 * Find the target tuple
@@ -1434,6 +1444,9 @@ AlterTableSpaceOptions(AlterTableSpaceOptionsStmt *stmt)
 	bool		repl_null[Natts_pg_tablespace];
 	bool		repl_repl[Natts_pg_tablespace];
 	HeapTuple	newtuple;
+
+	if (IsDfsTablespaceByName(stmt->tablespacename))
+		return DfsAlterTableSpaceOptions(stmt);
 
 	/* Search pg_tablespace */
 	rel = table_open(TableSpaceRelationId, RowExclusiveLock);

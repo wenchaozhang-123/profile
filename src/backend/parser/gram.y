@@ -640,6 +640,8 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 %type <list>	constraints_set_list
 %type <boolean> constraints_set_mode
 %type <str>		OptTableSpace OptConsTableSpace
+%type <defelt>	OptServer
+
 %type <rolespec> OptTableSpaceOwner
 %type <node>    DistributedBy OptDistributedBy 
 %type <ival>	OptTabPartitionRangeInclusive
@@ -7137,19 +7139,31 @@ opt_procedural:
  *
  *****************************************************************************/
 
-CreateTableSpaceStmt: CREATE TABLESPACE name OptTableSpaceOwner LOCATION Sconst opt_reloptions
+CreateTableSpaceStmt: CREATE TABLESPACE name OptTableSpaceOwner LOCATION Sconst opt_reloptions OptServer
 				{
 					CreateTableSpaceStmt *n = makeNode(CreateTableSpaceStmt);
 					n->tablespacename = $3;
 					n->owner = $4;
 					n->location = $6;
 					n->options = $7;
+
+					if ($8 != NULL)
+					{
+						n->options = lappend(n->options, $8);
+						n->options = lappend(n->options,
+											 makeDefElem("path", (Node *)makeString($6), @6));
+					}
+
 					$$ = (Node *) n;
 				}
 		;
 
 OptTableSpaceOwner: OWNER RoleSpec		{ $$ = $2; }
 			| /*EMPTY */				{ $$ = NULL; }
+		;
+
+OptServer:   SERVER name					{ $$ = makeDefElem("server", (Node *)makeString($2), @1); }
+			| /*EMPTY*/						{ $$ = NULL; }
 		;
 
 /*****************************************************************************

@@ -234,3 +234,43 @@ get_tablespace_maintenance_io_concurrency(Oid spcid)
 	else
 		return spc->opts->maintenance_io_concurrency;
 }
+
+const char *
+GetDfsTablespaceServer(Oid id)
+{
+	TableSpaceCacheEntry *spc = get_tablespace(id);
+
+	if (!spc->opts)
+		return NULL;
+
+	if (spc->opts->serverOffset == 0)
+		return NULL;
+
+	return pstrdup((char *) spc->opts + spc->opts->serverOffset);
+}
+
+const char *
+GetDfsTablespacePath(Oid id)
+{
+	TableSpaceCacheEntry *spc = get_tablespace(id);
+
+	if (!spc->opts)
+		return NULL;
+
+	if (spc->opts->pathOffset == 0)
+		return NULL;
+
+	return pstrdup((char *) spc->opts + spc->opts->pathOffset);
+}
+
+bool
+IsDfsTablespaceById(Oid id)
+{
+	return GetDfsTablespaceServer(id) != NULL;
+}
+
+bool
+IsDfsTablespaceByName(const char *name)
+{
+	return IsDfsTablespaceById(get_tablespace_oid(name, false));
+}

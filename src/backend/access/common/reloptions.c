@@ -166,6 +166,15 @@ static relopt_bool boolRelOpts[] =
 		},
 		true
 	},
+	{
+		{
+			"stage",
+			"Declare a tablespace as a dfs staged tablespace",
+			RELOPT_KIND_TABLESPACE,
+			AccessExclusiveLock
+		},
+		false
+	},
 	/* list terminator */
 	{{NULL}}
 };
@@ -546,6 +555,24 @@ static relopt_enum enumRelOpts[] =
 
 static relopt_string stringRelOpts[] =
 {
+	{
+		{
+			"server",
+			"the server used by the dfs tablespace",
+			RELOPT_KIND_TABLESPACE,
+			AccessExclusiveLock
+		},
+		0, true, NULL, NULL, NULL
+	},
+	{
+		{
+			"path",
+			"the path of the dfs tablespace",
+			RELOPT_KIND_TABLESPACE,
+			AccessExclusiveLock
+		},
+		0, true, NULL, NULL, NULL
+	},
 	/* list terminator */
 	{{NULL}}
 };
@@ -2098,7 +2125,10 @@ tablespace_reloptions(Datum reloptions, bool validate)
 		{"random_page_cost", RELOPT_TYPE_REAL, offsetof(TableSpaceOpts, random_page_cost)},
 		{"seq_page_cost", RELOPT_TYPE_REAL, offsetof(TableSpaceOpts, seq_page_cost)},
 		{"effective_io_concurrency", RELOPT_TYPE_INT, offsetof(TableSpaceOpts, effective_io_concurrency)},
-		{"maintenance_io_concurrency", RELOPT_TYPE_INT, offsetof(TableSpaceOpts, maintenance_io_concurrency)}
+		{"maintenance_io_concurrency", RELOPT_TYPE_INT, offsetof(TableSpaceOpts, maintenance_io_concurrency)},
+		{"stage", RELOPT_TYPE_BOOL, offsetof(TableSpaceOpts, stage)},
+		{"server", RELOPT_TYPE_STRING, offsetof(TableSpaceOpts, serverOffset)},
+		{"path", RELOPT_TYPE_STRING, offsetof(TableSpaceOpts, pathOffset)}
 	};
 
 	return (bytea *) build_reloptions(reloptions, validate,

@@ -67,6 +67,6 @@ OBJS = \
 	pg_profile.o
 
 OBJS += analyzefuncs.o analyzeutils.o extprotocolcmds.o exttablecmds.o queue.o
-OBJS += resgroupcmds.o tablecmds_gp.o vacuum_ao.o taskcmds.o
+OBJS += resgroupcmds.o tablecmds_gp.o vacuum_ao.o taskcmds.o tablespace_cb.o
 
 include $(top_srcdir)/src/backend/common.mk

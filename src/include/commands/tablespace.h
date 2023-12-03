@@ -43,6 +43,9 @@ typedef struct TableSpaceOpts
 	float8		seq_page_cost;
 	int			effective_io_concurrency;
 	int			maintenance_io_concurrency;
+	bool		stage;
+	int			serverOffset;
+	int			pathOffset;
 } TableSpaceOpts;
 
 extern Oid	CreateTableSpace(CreateTableSpaceStmt *stmt);
@@ -66,5 +69,10 @@ extern void remove_tablespace_symlink(const char *linkloc);
 extern void tblspc_redo(XLogReaderState *rptr);
 extern void tblspc_desc(StringInfo buf, XLogReaderState *rptr);
 extern const char *tblspc_identify(uint8 info);
+
+extern bool IsDfsTableSpaceStmt(CreateTableSpaceStmt *stmt);
+extern Oid DfsCreateTableSpace(CreateTableSpaceStmt *stmt);
+extern void DfsDropTableSpace(DropTableSpaceStmt *stmt);
+extern Oid DfsAlterTableSpaceOptions(AlterTableSpaceOptionsStmt *stmt);
 
 #endif							/* TABLESPACE_H */
