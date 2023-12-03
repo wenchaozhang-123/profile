@@ -637,6 +637,8 @@ smgrDoPendingDeletes(bool isCommit)
 				maxrels = 0;
 	SMgrRelation *srels = NULL;
 
+	FileDoDeletesActions(isCommit);
+
 	prev = NULL;
 	for (pending = pendingDeletes; pending != NULL; pending = next)
 	{
@@ -933,6 +935,7 @@ AtSubCommit_smgr(void)
 	int			nestLevel = GetCurrentTransactionNestLevel();
 	PendingRelDelete *pending;
 
+	FileAtSubCommitSmgr();
 	for (pending = pendingDeletes; pending != NULL; pending = pending->next)
 	{
 		if (pending->nestLevel >= nestLevel)
@@ -950,6 +953,7 @@ AtSubCommit_smgr(void)
 void
 AtSubAbort_smgr(void)
 {
+	FileAtSubAbortSmgr();
 	smgrDoPendingDeletes(false);
 }
 

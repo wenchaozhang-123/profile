@@ -40,6 +40,7 @@
 #include "catalog/pg_default_acl.h"
 #include "catalog/pg_depend.h"
 #include "catalog/pg_description.h"
+#include "catalog/pg_directory_table.h"
 #include "catalog/pg_enum.h"
 #include "catalog/pg_event_trigger.h"
 #include "catalog/pg_foreign_data_wrapper.h"
@@ -386,6 +387,17 @@ static const struct cachedesc cacheinfo[] = {
 			0
 		},
 		8
+	},
+	{DirectoryTableRelationId,	/* DIRECTORYTABLEREL */
+		DirectoryTableRelidIndexId,
+		1,
+		{
+			Anum_pg_directory_table_dtrelid,
+			0,
+			0,
+			0
+		},
+		4
 	},
 	{EnumRelationId,			/* ENUMOID */
 		EnumOidIndexId,

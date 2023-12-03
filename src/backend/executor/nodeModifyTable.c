@@ -2652,7 +2652,8 @@ ExecModifyTable(PlanState *pstate)
 			relkind = resultRelInfo->ri_RelationDesc->rd_rel->relkind;
 			if (relkind == RELKIND_RELATION ||
 				relkind == RELKIND_MATVIEW ||
-				relkind == RELKIND_PARTITIONED_TABLE)
+				relkind == RELKIND_PARTITIONED_TABLE ||
+				relkind == RELKIND_DIRECTORY_TABLE)
 			{
 				/*
 				 * GPDB_14_MERGE_FIXME: In here, we will extract wholerow junk attr only
@@ -3132,7 +3133,8 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 			relkind = resultRelInfo->ri_RelationDesc->rd_rel->relkind;
 			if (relkind == RELKIND_RELATION ||
 				relkind == RELKIND_MATVIEW ||
-				relkind == RELKIND_PARTITIONED_TABLE)
+				relkind == RELKIND_PARTITIONED_TABLE ||
+				relkind == RELKIND_DIRECTORY_TABLE)
 			{
 				resultRelInfo->ri_RowIdAttNo =
 					ExecFindJunkAttributeInTlist(subplan->targetlist, "ctid");

@@ -17,6 +17,7 @@ OBJS = \
 	aclchk.o \
 	catalog.o \
 	dependency.o \
+	dirtable.o \
 	heap.o \
 	index.o \
 	indexing.o \
@@ -52,7 +53,8 @@ OBJS += pg_extprotocol.o \
        pg_appendonly.o \
        oid_dispatch.o aocatalog.o storage_tablespace.o storage_database.o \
        storage_tablespace_twophase.o storage_tablespace_xact.o \
-       gp_partition_template.o pg_task.o pg_task_run_history.o
+       gp_partition_template.o pg_task.o pg_task_run_history.o \
+       storage_cb.o
 
 CATALOG_JSON:= $(addprefix $(top_srcdir)/gpMgmt/bin/gppylib/data/, $(addsuffix .json,$(GP_MAJORVERSION)))
 
@@ -86,6 +88,7 @@ CATALOG_HEADERS := \
 	pg_compression.h \
 	pg_proc_callback.h \
 	pg_type_encoding.h \
+	pg_directory_table.h \
 	pg_stat_last_operation.h pg_stat_last_shoperation.h \
 	pg_foreign_table.h pg_policy.h pg_replication_origin.h \
 	pg_default_acl.h pg_init_privs.h pg_seclabel.h pg_shseclabel.h \

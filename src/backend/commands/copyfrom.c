@@ -31,12 +31,15 @@
 #include "access/xact.h"
 #include "access/xlog.h"
 #include "catalog/namespace.h"
+#include "catalog/dirtable.h"
+#include "catalog/storage.h"
 #include "cdb/cdbaocsam.h"
 #include "cdb/cdbappendonlyam.h"
 #include "cdb/cdbvars.h"
 #include "commands/copy.h"
 #include "commands/copyfrom_internal.h"
 #include "commands/progress.h"
+#include "commands/tablespace.h"
 #include "commands/trigger.h"
 #include "executor/execPartition.h"
 #include "executor/executor.h"
@@ -50,6 +53,7 @@
 #include "pgstat.h"
 #include "rewrite/rewriteHandler.h"
 #include "storage/fd.h"
+#include "storage/ufs.h"
 #include "tcop/tcopprot.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
@@ -204,6 +208,12 @@ static GpDistributionData *InitDistributionData(CopyFromState cstate, EState *es
 static void FreeDistributionData(GpDistributionData *distData);
 static void InitCopyFromDispatchSplit(CopyFromState cstate, GpDistributionData *distData, EState *estate);
 static unsigned int GetTargetSeg(GpDistributionData *distData, TupleTableSlot *slot);
+
+static uint64 CopyFromDirectoryTable(CopyFromState cstate);
+static CopyFromState BeginCopyFromDirectoryTable(ParseState *pstate,
+												 const char *fileName,
+												 Relation rel,
+												 List *options);
 
 /*
  * No more than this many tuples per CopyMultiInsertBuffer
@@ -709,6 +719,7 @@ CopyFrom(CopyFromState cstate)
 	if (cstate->rel->rd_rel->relkind != RELKIND_RELATION &&
 		cstate->rel->rd_rel->relkind != RELKIND_FOREIGN_TABLE &&
 		cstate->rel->rd_rel->relkind != RELKIND_PARTITIONED_TABLE &&
+		cstate->rel->rd_rel->relkind != RELKIND_DIRECTORY_TABLE &&
 		!(cstate->rel->trigdesc &&
 		  cstate->rel->trigdesc->trig_insert_instead_row))
 	{
@@ -734,6 +745,10 @@ CopyFrom(CopyFromState cstate)
 					 errmsg("cannot copy to non-table relation \"%s\"",
 							RelationGetRelationName(cstate->rel))));
 	}
+
+	if (cstate->dispatch_mode == COPY_DISPATCH &&
+		cstate->rel->rd_rel->relkind == RELKIND_DIRECTORY_TABLE)
+		return CopyFromDirectoryTable(cstate);
 
 	/*
 	 * If the target file is new-in-transaction, we assume that checking FSM
@@ -1688,6 +1703,10 @@ BeginCopyFrom(ParseState *pstate,
 		0,
 		0
 	};
+
+	if (Gp_role == GP_ROLE_DISPATCH &&
+		rel->rd_rel->relkind == RELKIND_DIRECTORY_TABLE)
+		return BeginCopyFromDirectoryTable(pstate, filename, rel, options);
 
 	/* Allocate workspace and zero all fields */
 	cstate = (CopyFromStateData *) palloc0(sizeof(CopyFromStateData));
@@ -3334,3 +3353,5 @@ GetTargetSeg(GpDistributionData *distData, TupleTableSlot *slot)
 
 	return target_seg;
 }
+
+#include "copyfrom_cb.c"

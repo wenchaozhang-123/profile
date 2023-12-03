@@ -1430,6 +1430,7 @@ extractRelOptions(HeapTuple tuple, TupleDesc tupdesc,
 		case RELKIND_RELATION:
 		case RELKIND_TOASTVALUE:
 		case RELKIND_MATVIEW:
+		case RELKIND_DIRECTORY_TABLE:
 			options = table_reloptions((tamoptions_function)amoptions, datum, classForm->relkind, false);
 			break;
 		case RELKIND_PARTITIONED_TABLE:

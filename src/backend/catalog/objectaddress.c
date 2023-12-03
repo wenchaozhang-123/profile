@@ -899,7 +899,10 @@ static const struct object_type_map
 	/* OCLASS_PROFILE */
 	{
 		"profile", OBJECT_PROFILE
-	}
+	},
+	{
+		"directory table", OBJECT_DIRECTORY_TABLE
+ 	}
 };
 
 const ObjectAddress InvalidObjectAddress =
@@ -1014,6 +1017,7 @@ get_object_address(ObjectType objtype, Node *object,
 			case OBJECT_VIEW:
 			case OBJECT_MATVIEW:
 			case OBJECT_FOREIGN_TABLE:
+			case OBJECT_DIRECTORY_TABLE:
 				address =
 					get_relation_by_qualified_name(objtype, castNode(List, object),
 												   &relation, lockmode,
@@ -1451,6 +1455,13 @@ get_relation_by_qualified_name(ObjectType objtype, List *object,
 				ereport(ERROR,
 						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
 						 errmsg("\"%s\" is not a table",
+								RelationGetRelationName(relation))));
+			break;
+		case OBJECT_DIRECTORY_TABLE:
+			if (relation->rd_rel->relkind != RELKIND_DIRECTORY_TABLE)
+				ereport(ERROR,
+						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+						 errmsg("\"%s\" is not a directory table",
 								RelationGetRelationName(relation))));
 			break;
 		case OBJECT_VIEW:
@@ -2350,6 +2361,7 @@ pg_get_object_address(PG_FUNCTION_ARGS)
 		case OBJECT_TABCONSTRAINT:
 		case OBJECT_OPCLASS:
 		case OBJECT_OPFAMILY:
+		case OBJECT_DIRECTORY_TABLE:
 			objnode = (Node *) name;
 			break;
 		case OBJECT_ACCESS_METHOD:
@@ -2466,6 +2478,7 @@ check_object_ownership(Oid roleid, ObjectType objtype, ObjectAddress address,
 		case OBJECT_TRIGGER:
 		case OBJECT_POLICY:
 		case OBJECT_TABCONSTRAINT:
+		case OBJECT_DIRECTORY_TABLE:
 			if (!pg_class_ownercheck(RelationGetRelid(relation), roleid))
 				aclcheck_error(ACLCHECK_NOT_OWNER, objtype,
 							   RelationGetRelationName(relation));
@@ -4150,6 +4163,10 @@ getRelationDescription(StringInfo buffer, Oid relid, bool missing_ok)
 			appendStringInfo(buffer, _("table %s"),
 							 relname);
 			break;
+		case RELKIND_DIRECTORY_TABLE:
+			appendStringInfo(buffer, _("directory table %s"),
+							 relname);
+			break;
 		case RELKIND_INDEX:
 		case RELKIND_PARTITIONED_INDEX:
 			appendStringInfo(buffer, _("index %s"),
@@ -4708,6 +4725,9 @@ getRelationTypeDescription(StringInfo buffer, Oid relid, int32 objectSubId,
 		case RELKIND_RELATION:
 		case RELKIND_PARTITIONED_TABLE:
 			appendStringInfoString(buffer, "table");
+			break;
+		case RELKIND_DIRECTORY_TABLE:
+			appendStringInfoString(buffer, "directory table");
 			break;
 		case RELKIND_INDEX:
 		case RELKIND_PARTITIONED_INDEX:
@@ -6198,6 +6218,8 @@ get_relkind_objtype(char relkind)
 			return OBJECT_MATVIEW;
 		case RELKIND_FOREIGN_TABLE:
 			return OBJECT_FOREIGN_TABLE;
+		case RELKIND_DIRECTORY_TABLE:
+			return OBJECT_DIRECTORY_TABLE;
 		case RELKIND_TOASTVALUE:
 			return OBJECT_TABLE;
 		default:

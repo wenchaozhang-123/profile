@@ -1207,6 +1207,7 @@ estimate_rel_size(Relation rel, int32 *attr_widths,
 		case RELKIND_AOSEGMENTS:
 		case RELKIND_AOBLOCKDIR:
 		case RELKIND_AOVISIMAP:
+		case RELKIND_DIRECTORY_TABLE:
 			table_relation_estimate_size(rel, attr_widths, pages, tuples,
 										 allvisfrac);
 			break;

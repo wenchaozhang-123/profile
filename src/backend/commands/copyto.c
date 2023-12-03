@@ -266,7 +266,8 @@ BeginCopyTo(ParseState *pstate,
 		0
 	};
 
-	if (rel != NULL && rel->rd_rel->relkind != RELKIND_RELATION)
+	if (rel != NULL && rel->rd_rel->relkind != RELKIND_RELATION &&
+		rel->rd_rel->relkind != RELKIND_DIRECTORY_TABLE)
 	{
 		if (rel->rd_rel->relkind == RELKIND_VIEW)
 			ereport(ERROR,

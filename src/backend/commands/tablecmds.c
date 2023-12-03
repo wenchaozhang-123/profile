@@ -186,6 +186,12 @@ static const struct dropmsgstrings dropmsgstringarray[] = {
 		gettext_noop("table \"%s\" does not exist, skipping"),
 		gettext_noop("\"%s\" is not a table"),
 	gettext_noop("Use DROP TABLE to remove a table.")},
+	{RELKIND_DIRECTORY_TABLE,
+		ERRCODE_UNDEFINED_TABLE,
+		gettext_noop("directory table \"%s\" does not exist"),
+		gettext_noop("directory table \"%s\" does not exist, skipping"),
+		gettext_noop("\"%s\" is not a directory table"),
+	gettext_noop("Use DROP DIRECTORY TABLE to remove a directory table.")},
 	{RELKIND_SEQUENCE,
 		ERRCODE_UNDEFINED_TABLE,
 		gettext_noop("sequence \"%s\" does not exist"),
@@ -259,6 +265,7 @@ struct DropRelationCallbackState
 #define		ATT_COMPOSITE_TYPE		0x0010
 #define		ATT_FOREIGN_TABLE		0x0020
 #define		ATT_PARTITIONED_INDEX	0x0040
+#define		ATT_DIRECTORY_TABLE		0x0080
 
 /*
  * ForeignTruncateInfo
@@ -815,7 +822,8 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	}
 	else if (relkind == RELKIND_RELATION ||
 			 relkind == RELKIND_TOASTVALUE ||
-			 relkind == RELKIND_MATVIEW)
+			 relkind == RELKIND_MATVIEW ||
+			 relkind == RELKIND_DIRECTORY_TABLE)
 		accessMethod = default_table_access_method;
 
 	/* look up the access method, verify it is for a table */
@@ -838,7 +846,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 */
 	if (AMHandlerIsAO(amHandlerOid))
 	{
-		Assert(relkind == RELKIND_MATVIEW || relkind == RELKIND_RELATION );
+		Assert(relkind == RELKIND_MATVIEW || relkind == RELKIND_RELATION || relkind == RELKIND_DIRECTORY_TABLE);
 
 		/*
 		 * Extract and process any WITH options supplied, otherwise use defaults
@@ -1022,7 +1030,8 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 * This is done in dispatcher (and in utility mode). In QE, we receive
 	 * the already-processed options from the QD.
 	 */
-	if ((relkind == RELKIND_RELATION || relkind == RELKIND_MATVIEW) &&
+	if ((relkind == RELKIND_RELATION || relkind == RELKIND_MATVIEW ||
+		 relkind == RELKIND_DIRECTORY_TABLE) &&
 		Gp_role != GP_ROLE_EXECUTE)
 	{
 		const TableAmRoutine *tam = GetTableAmRoutineByAmId(accessMethodId);
@@ -1698,6 +1707,10 @@ RemoveRelations(DropStmt *drop)
 
 		case OBJECT_FOREIGN_TABLE:
 			relkind = RELKIND_FOREIGN_TABLE;
+			break;
+
+		case OBJECT_DIRECTORY_TABLE:
+			relkind = RELKIND_DIRECTORY_TABLE;
 			break;
 
 		default:
@@ -2590,6 +2603,13 @@ truncate_check_rel(Oid relid, Form_pg_class reltuple)
 					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 					 errmsg("cannot truncate foreign table \"%s\"",
 							relname)));
+	}
+	else if (reltuple->relkind == RELKIND_DIRECTORY_TABLE)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot truncate directory table \"%s\"",
+						relname)));
 	}
 	else if (reltuple->relkind != RELKIND_RELATION &&
 		reltuple->relkind != RELKIND_PARTITIONED_TABLE &&
@@ -5182,7 +5202,8 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 			pass = AT_PASS_DROP;
 			break;
 		case AT_SetStatistics:	/* ALTER COLUMN SET STATISTICS */
-			ATSimplePermissions(rel, ATT_TABLE | ATT_MATVIEW | ATT_INDEX | ATT_PARTITIONED_INDEX | ATT_FOREIGN_TABLE);
+			ATSimplePermissions(rel, ATT_TABLE | ATT_MATVIEW | ATT_INDEX | ATT_PARTITIONED_INDEX | ATT_FOREIGN_TABLE |
+					ATT_DIRECTORY_TABLE);
 			ATSimpleRecursion(wqueue, rel, cmd, recurse, lockmode, context);
 			/* No command-specific prep needed */
 			pass = AT_PASS_MISC;
@@ -5215,7 +5236,7 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 			pass = AT_PASS_DROP;
 			break;
 		case AT_AddIndex:		/* ADD INDEX */
-			ATSimplePermissions(rel, ATT_TABLE);
+			ATSimplePermissions(rel, ATT_TABLE | ATT_DIRECTORY_TABLE);
 			/* This command never recurses */
 			/* No command-specific prep needed */
 			pass = AT_PASS_ADD_INDEX;
@@ -5342,7 +5363,7 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 				pass = AT_PASS_MISC;
 				break;
 			}
-			ATSimplePermissions(rel, ATT_TABLE);
+			ATSimplePermissions(rel, ATT_TABLE | ATT_DIRECTORY_TABLE);
 
 			if (!recursing) /* MPP-5772, MPP-5784 */
 			{
@@ -5518,7 +5539,7 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 		case AT_DisableTrig:	/* DISABLE TRIGGER variants */
 		case AT_DisableTrigAll:
 		case AT_DisableTrigUser:
-			ATSimplePermissions(rel, ATT_TABLE | ATT_FOREIGN_TABLE);
+			ATSimplePermissions(rel, ATT_TABLE | ATT_FOREIGN_TABLE | ATT_DIRECTORY_TABLE);
 			if (rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
 				ATSimpleRecursion(wqueue, rel, cmd, recurse, lockmode, context);
 			pass = AT_PASS_MISC;
@@ -5533,7 +5554,7 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 		case AT_DisableRowSecurity:
 		case AT_ForceRowSecurity:
 		case AT_NoForceRowSecurity:
-			ATSimplePermissions(rel, ATT_TABLE);
+			ATSimplePermissions(rel, ATT_TABLE | ATT_DIRECTORY_TABLE);
 			/* These commands never recurse */
 			/* No command-specific prep needed */
 			pass = AT_PASS_MISC;
@@ -7400,6 +7421,9 @@ ATSimplePermissions(Relation rel, int allowed_targets)
 		case RELKIND_FOREIGN_TABLE:
 			actual_target = ATT_FOREIGN_TABLE;
 			break;
+		case RELKIND_DIRECTORY_TABLE:
+			actual_target = ATT_DIRECTORY_TABLE;
+			break;
 
 		case RELKIND_AOSEGMENTS:
 		case RELKIND_AOBLOCKDIR:
@@ -7469,7 +7493,7 @@ ATWrongRelkindError(Relation rel, int allowed_targets)
 		case ATT_TABLE | ATT_MATVIEW | ATT_INDEX | ATT_PARTITIONED_INDEX:
 			msg = _("\"%s\" is not a table, materialized view, index, or partitioned index");
 			break;
-		case ATT_TABLE | ATT_MATVIEW | ATT_INDEX | ATT_PARTITIONED_INDEX | ATT_FOREIGN_TABLE:
+		case ATT_TABLE | ATT_MATVIEW | ATT_INDEX | ATT_PARTITIONED_INDEX | ATT_FOREIGN_TABLE | ATT_DIRECTORY_TABLE:
 			msg = _("\"%s\" is not a table, materialized view, index, partitioned index, or foreign table");
 			break;
 		case ATT_TABLE | ATT_MATVIEW | ATT_FOREIGN_TABLE:
@@ -7492,6 +7516,15 @@ ATWrongRelkindError(Relation rel, int allowed_targets)
 			break;
 		case ATT_FOREIGN_TABLE:
 			msg = _("\"%s\" is not a foreign table");
+			break;
+		case ATT_TABLE | ATT_DIRECTORY_TABLE:
+			msg = _("\"%s\" is not a table or directory table");
+			break;
+		case ATT_TABLE | ATT_FOREIGN_TABLE | ATT_DIRECTORY_TABLE:
+			msg = _("\"%s\" is not a table, foreign table, or directory table");
+			break;
+		case ATT_DIRECTORY_TABLE:
+			msg = _("\"%s\" is not a directory table");
 			break;
 		default:
 			/* shouldn't get here, add all necessary cases above */
@@ -15118,6 +15151,7 @@ ATExecChangeOwner(Oid relationOid, Oid newOwnerId, bool recursing, LOCKMODE lock
 		case RELKIND_MATVIEW:
 		case RELKIND_FOREIGN_TABLE:
 		case RELKIND_PARTITIONED_TABLE:
+		case RELKIND_DIRECTORY_TABLE:
 			/* ok to change owner */
 			break;
 		case RELKIND_INDEX:
@@ -15294,6 +15328,7 @@ ATExecChangeOwner(Oid relationOid, Oid newOwnerId, bool recursing, LOCKMODE lock
 			tuple_class->relkind == RELKIND_MATVIEW ||
 			tuple_class->relkind == RELKIND_TOASTVALUE ||
 			tuple_class->relnamespace == PG_EXTAUX_NAMESPACE ||
+			tuple_class->relkind == RELKIND_DIRECTORY_TABLE ||
 			IsAppendonlyMetadataRelkind(tuple_class->relkind))
 		{
 			List	   *index_oid_list;
@@ -18516,7 +18551,8 @@ ATExecSetDistributedBy(Relation rel, Node *node, AlterTableCmd *cmd)
 			ldistro = make_distributedby_for_rel(rel);
 
 		if (rel->rd_rel->relkind == RELKIND_RELATION ||
-			rel->rd_rel->relkind == RELKIND_MATVIEW)
+			rel->rd_rel->relkind == RELKIND_MATVIEW ||
+			rel->rd_rel->relkind == RELKIND_DIRECTORY_TABLE)
 		{
 			need_reorg = true;
 		}
@@ -19711,7 +19747,8 @@ AlterTableNamespaceInternal(Relation rel, Oid oldNspOid, Oid nspOid,
 	/* Fix other dependent stuff */
 	if (rel->rd_rel->relkind == RELKIND_RELATION ||
 		rel->rd_rel->relkind == RELKIND_MATVIEW ||
-		rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
+		rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE ||
+		rel->rd_rel->relkind == RELKIND_DIRECTORY_TABLE)
 	{
 		AlterIndexNamespaces(classRel, rel, oldNspOid, nspOid, objsMoved);
 		AlterSeqNamespaces(classRel, rel, oldNspOid, nspOid,
@@ -20184,10 +20221,11 @@ RangeVarCallbackOwnsTable(const RangeVar *relation,
 	if (!relkind)
 		return;
 	if (relkind != RELKIND_RELATION && relkind != RELKIND_TOASTVALUE &&
-		relkind != RELKIND_MATVIEW && relkind != RELKIND_PARTITIONED_TABLE)
+		relkind != RELKIND_MATVIEW && relkind != RELKIND_PARTITIONED_TABLE &&
+		relkind != RELKIND_DIRECTORY_TABLE)
 		ereport(ERROR,
 				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-				 errmsg("\"%s\" is not a table or materialized view", relation->relname)));
+				 errmsg("\"%s\" is not a table, materialized view or directory table", relation->relname)));
 
 	/* Check permissions */
 	if (!pg_class_ownercheck(relId, GetUserId()))
@@ -20339,6 +20377,11 @@ RangeVarCallbackForAlterRelation(const RangeVar *rv, Oid relid, Oid oldrelid,
 				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
 				 errmsg("\"%s\" is not a composite type", rv->relname)));
 
+	if (reltype == OBJECT_DIRECTORY_TABLE && relkind != RELKIND_DIRECTORY_TABLE)
+		ereport(ERROR,
+				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+				 errmsg("\"%s\" is not a directory table", rv->relname)));
+
 	if (reltype == OBJECT_INDEX && relkind != RELKIND_INDEX &&
 		relkind != RELKIND_PARTITIONED_INDEX
 		&& !IsA(stmt, RenameStmt))
@@ -20366,10 +20409,11 @@ RangeVarCallbackForAlterRelation(const RangeVar *rv, Oid relid, Oid oldrelid,
 		relkind != RELKIND_MATVIEW &&
 		relkind != RELKIND_SEQUENCE &&
 		relkind != RELKIND_FOREIGN_TABLE &&
-		relkind != RELKIND_PARTITIONED_TABLE)
+		relkind != RELKIND_PARTITIONED_TABLE &&
+		relkind != RELKIND_DIRECTORY_TABLE)
 		ereport(ERROR,
 				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-				 errmsg("\"%s\" is not a table, view, materialized view, sequence, or foreign table",
+				 errmsg("\"%s\" is not a table, view, materialized view, sequence, directory table, or foreign table",
 						rv->relname)));
 
 	ReleaseSysCache(tuple);

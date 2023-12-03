@@ -49,4 +49,10 @@ extern void AtSubCommit_smgr(void);
 extern void AtSubAbort_smgr(void);
 extern void PostPrepare_smgr(void);
 
+extern void FileAddCreatePendingEntry(Relation rel, Oid spcId, char *relativePath);
+extern void FileDoDeletesActions(bool isCommit);
+extern void FileAtSubCommitSmgr(void);
+extern void FileAtSubAbortSmgr(void);
+extern void DirectoryTableDropStorage(Relation rel);
+
 #endif							/* STORAGE_H */

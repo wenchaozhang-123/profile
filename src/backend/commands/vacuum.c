@@ -1131,7 +1131,8 @@ get_all_vacuum_rels(int options)
 		 */
 		if (classForm->relkind != RELKIND_RELATION &&
 			classForm->relkind != RELKIND_MATVIEW &&
-			classForm->relkind != RELKIND_PARTITIONED_TABLE)
+			classForm->relkind != RELKIND_PARTITIONED_TABLE &&
+			classForm->relkind != RELKIND_DIRECTORY_TABLE)
 			continue;
 
 		/* skip mid-level partition tables if we have disabled collecting statistics for them */
@@ -1856,7 +1857,8 @@ vac_update_datfrozenxid(void)
 			classForm->relkind != RELKIND_TOASTVALUE &&
 			classForm->relkind != RELKIND_AOSEGMENTS &&
 			classForm->relkind != RELKIND_AOVISIMAP &&
-			classForm->relkind != RELKIND_AOBLOCKDIR)
+			classForm->relkind != RELKIND_AOBLOCKDIR &&
+			classForm->relkind != RELKIND_DIRECTORY_TABLE)
 		{
 			Assert(!TransactionIdIsValid(classForm->relfrozenxid));
 			Assert(!MultiXactIdIsValid(classForm->relminmxid));
@@ -2303,7 +2305,8 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 		rel->rd_rel->relkind != RELKIND_PARTITIONED_TABLE &&
 		rel->rd_rel->relkind != RELKIND_AOSEGMENTS &&
 		rel->rd_rel->relkind != RELKIND_AOBLOCKDIR &&
-		rel->rd_rel->relkind != RELKIND_AOVISIMAP)
+		rel->rd_rel->relkind != RELKIND_AOVISIMAP &&
+		rel->rd_rel->relkind != RELKIND_DIRECTORY_TABLE)
 	{
 		ereport(WARNING,
 				(errmsg("skipping \"%s\" --- cannot vacuum non-tables or special system tables",
@@ -2460,7 +2463,8 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 		 rel->rd_rel->relkind != RELKIND_TOASTVALUE &&
 		 rel->rd_rel->relkind != RELKIND_AOSEGMENTS &&
 		 rel->rd_rel->relkind != RELKIND_AOBLOCKDIR &&
-		 rel->rd_rel->relkind != RELKIND_AOVISIMAP)
+		 rel->rd_rel->relkind != RELKIND_AOVISIMAP &&
+		 rel->rd_rel->relkind != RELKIND_DIRECTORY_TABLE)
 		|| rel->rd_rel->relkind == RELKIND_FOREIGN_TABLE)
 	{
 		ereport(WARNING,
@@ -2558,6 +2562,8 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params,
 		if (has_bitmap)
 			LockRelation(rel, ShareLock);
 	}
+
+	/* TODO: vacuum directory table's temp files */
 
 	if (!is_appendoptimized && (params->options & VACOPT_FULL))
 	{

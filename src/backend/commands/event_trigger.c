@@ -993,6 +993,7 @@ EventTriggerSupportsObjectType(ObjectType obtype)
 		case OBJECT_TYPE:
 		case OBJECT_USER_MAPPING:
 		case OBJECT_VIEW:
+		case OBJECT_DIRECTORY_TABLE:
 			return true;
 
 		/* GPDB additions */
@@ -2171,6 +2172,7 @@ stringify_grant_objtype(ObjectType objtype)
 		case OBJECT_RESQUEUE:
 		case OBJECT_RESGROUP:
 		case OBJECT_PROFILE:
+		case OBJECT_DIRECTORY_TABLE:
 			elog(ERROR, "unsupported object type: %d", (int) objtype);
 	}
 
@@ -2257,6 +2259,7 @@ stringify_adefprivs_objtype(ObjectType objtype)
 		case OBJECT_RESQUEUE:
 		case OBJECT_RESGROUP:
 		case OBJECT_PROFILE:
+		case OBJECT_DIRECTORY_TABLE:
 			elog(ERROR, "unsupported object type: %d", (int) objtype);
 	}
 

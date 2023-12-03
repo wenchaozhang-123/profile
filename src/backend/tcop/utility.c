@@ -37,6 +37,7 @@
 #include "commands/createas.h"
 #include "commands/dbcommands.h"
 #include "commands/defrem.h"
+#include "commands/dirtablecmds.h"
 #include "commands/discard.h"
 #include "commands/event_trigger.h"
 #include "commands/explain.h"
@@ -212,6 +213,7 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_CreateTrigStmt:
 		case T_CreateUserMappingStmt:
 		case T_CreatedbStmt:
+		case T_CreateDirectoryTableStmt:
 		case T_DefineStmt:
 		case T_DropOwnedStmt:
 		case T_DropRoleStmt:
@@ -1358,6 +1360,7 @@ ProcessUtilitySlow(ParseState *pstate,
 
 			case T_CreateStmt:
 			case T_CreateForeignTableStmt:
+			case T_CreateDirectoryTableStmt:
 				{
 					List	   *stmts;
 					RangeVar   *table_rv = NULL;
@@ -1540,6 +1543,26 @@ ProcessUtilitySlow(ParseState *pstate,
 							CreateForeignTable(cstmt,
 											   address.objectId,
 											   false /* skip_permission_checks */);
+							EventTriggerCollectSimpleCommand(address,
+															 secondaryObject,
+															 stmt);
+						}
+						else if (IsA(stmt, CreateDirectoryTableStmt))
+						{
+							CreateDirectoryTableStmt *cstmt = (CreateDirectoryTableStmt *) stmt;
+
+							/* Remember transformed RangeVar for LIKE */
+							table_rv = cstmt->base.relation;
+
+							/* Create the table itself */
+							address = DefineRelation(&cstmt->base,
+													 RELKIND_DIRECTORY_TABLE,
+													 InvalidOid, NULL,
+													 queryString,
+													 true,
+													 true,
+													 cstmt->base.intoPolicy);
+							CreateDirectoryTable(cstmt, address.objectId);
 							EventTriggerCollectSimpleCommand(address,
 															 secondaryObject,
 															 stmt);
@@ -2456,6 +2479,7 @@ ExecDropStmt(DropStmt *stmt, bool isTopLevel)
 		case OBJECT_VIEW:
 		case OBJECT_MATVIEW:
 		case OBJECT_FOREIGN_TABLE:
+		case OBJECT_DIRECTORY_TABLE:
 			RemoveRelations(stmt);
 			break;
 		default:
@@ -2839,6 +2863,9 @@ AlterObjectTypeCommandTag(ObjectType objtype)
 		case OBJECT_EXTPROTOCOL:
 			tag = CMDTAG_ALTER_PROTOCOL;
 			break;
+		case OBJECT_DIRECTORY_TABLE:
+			tag = CMDTAG_ALTER_DIRECTORY_TABLE;
+			break;
 		default:
 			tag = CMDTAG_UNKNOWN;
 			break;
@@ -3046,6 +3073,10 @@ CreateCommandTag(Node *parsetree)
 			tag = CMDTAG_IMPORT_FOREIGN_SCHEMA;
 			break;
 
+		case T_CreateDirectoryTableStmt:
+			tag = CMDTAG_CREATE_DIRECTORY_TABLE;
+			break;
+
 		case T_DropStmt:
 			switch (((DropStmt *) parsetree)->removeType)
 			{
@@ -3159,6 +3190,9 @@ CreateCommandTag(Node *parsetree)
 					break;
 				case OBJECT_STATISTIC_EXT:
 					tag = CMDTAG_DROP_STATISTICS;
+					break;
+				case OBJECT_DIRECTORY_TABLE:
+					tag = CMDTAG_DROP_DIRECTORY_TABLE;
 					break;
 				default:
 					tag = CMDTAG_UNKNOWN;
@@ -3895,6 +3929,7 @@ GetCommandLogLevel(Node *parsetree)
 		case T_AlterUserMappingStmt:
 		case T_DropUserMappingStmt:
 		case T_ImportForeignSchemaStmt:
+		case T_CreateDirectoryTableStmt:
 			lev = LOGSTMT_DDL;
 			break;
 

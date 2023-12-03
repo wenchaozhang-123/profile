@@ -1788,6 +1788,9 @@ _outNode(StringInfo str, void *obj)
 			case T_EphemeralNamedRelationInfo:
 				_outEphemeralNamedRelationInfo(str, obj);
 				break;
+			case T_CreateDirectoryTableStmt:
+				_outCreateDirectoryTableStmt(str, obj);
+				break;
 			default:
 				elog(ERROR, "could not serialize unrecognized node type: %d",
 						 (int) nodeTag(obj));

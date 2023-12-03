@@ -11710,6 +11710,12 @@
 #
 # GPDB ADDITIONS START HERE
 #
+#
+#
+
+{ oid => '8644', descr => 'read file content',
+  proname => 'file_content', provolatile => 's', prorettype => 'bytea',
+  proargtypes => 'text', prosrc => 'file_content' },
 
 { oid => '7178', descr => 'for use by pg_upgrade',
   proname => 'binary_upgrade_set_preassigned_oids', provolatile => 'v',

@@ -758,6 +758,7 @@ _readCreateStmt_common(CreateStmt *local_node)
 		   local_node->relKind == RELKIND_COMPOSITE_TYPE ||
 		   local_node->relKind == RELKIND_FOREIGN_TABLE ||
 		   local_node->relKind == RELKIND_MATVIEW ||
+		   local_node->relKind == RELKIND_DIRECTORY_TABLE ||
 		   IsAppendonlyMetadataRelkind(local_node->relKind));
 	Assert(local_node->oncommit <= ONCOMMIT_DROP);
 }
@@ -818,6 +819,7 @@ _readCopyStmt(void)
 	READ_BOOL_FIELD(is_from);
 	READ_BOOL_FIELD(is_program);
 	READ_STRING_FIELD(filename);
+	READ_STRING_FIELD(dirfilename);
 	READ_NODE_FIELD(options);
 	READ_NODE_FIELD(sreh);
 
@@ -1670,6 +1672,19 @@ _readEphemeralNamedRelationInfo(void)
 
 	READ_ENUM_FIELD(enrtype, EphemeralNameRelationType);
 	READ_FLOAT_FIELD(enrtuples);
+
+	READ_DONE();
+}
+
+static CreateDirectoryTableStmt *
+_readCreateDirectoryTableStmt(void)
+{
+	READ_LOCALS(CreateDirectoryTableStmt);
+
+	_readCreateStmt_common(&local_node->base);
+
+	READ_STRING_FIELD(location);
+	READ_STRING_FIELD(tablespacename);
 
 	READ_DONE();
 }
@@ -2670,6 +2685,9 @@ readNodeBinary(void)
 				break;
 			case T_EphemeralNamedRelationInfo:
 				return_value = _readEphemeralNamedRelationInfo();
+				break;
+			case T_CreateDirectoryTableStmt:
+				return_value = _readCreateDirectoryTableStmt();
 				break;
 			default:
 				return_value = NULL; /* keep the compiler silent */

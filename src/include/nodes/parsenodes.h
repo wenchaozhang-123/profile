@@ -1956,7 +1956,8 @@ typedef enum ObjectType
 	OBJECT_USER_MAPPING,
 	OBJECT_VIEW,
 	OBJECT_RESQUEUE,
-	OBJECT_RESGROUP
+	OBJECT_RESGROUP,
+	OBJECT_DIRECTORY_TABLE
 } ObjectType;
 
 /* Event triggers and extended statistics are only stored on the QD node.*/
@@ -2384,6 +2385,8 @@ typedef struct CopyStmt
 	bool		is_from;		/* TO or FROM */
 	bool		is_program;		/* is 'filename' a program to popen? */
 	char	   *filename;		/* filename, or NULL for STDIN/STDOUT */
+	char	   *dirfilename;	/* dirtable filename */
+
 	List	   *options;		/* List of DefElem nodes */
 	Node	   *whereClause;	/* WHERE condition (or NULL) */
 
@@ -3278,6 +3281,17 @@ typedef struct AlterOpFamilyStmt
 	bool		isDrop;			/* ADD or DROP the items? */
 	List	   *items;			/* List of CreateOpClassItem nodes */
 } AlterOpFamilyStmt;
+
+/* ----------------------
+ *		Create/Alter Directory Table Statements
+ * ----------------------
+ */
+typedef struct CreateDirectoryTableStmt
+{
+	CreateStmt	base;
+	char	   *location;
+	char	   *tablespacename;
+} CreateDirectoryTableStmt;
 
 /* ----------------------
  *		DROP Statement, applies to:

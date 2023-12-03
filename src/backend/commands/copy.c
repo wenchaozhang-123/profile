@@ -393,7 +393,8 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 			PreventCommandIfReadOnly("COPY FROM");
 
 		cstate = BeginCopyFrom(pstate, rel, whereClause,
-							   stmt->filename, stmt->is_program,
+							   rel->rd_rel->relkind == RELKIND_DIRECTORY_TABLE ? stmt->dirfilename : stmt->filename,
+							   stmt->is_program,
 							   NULL, NULL, stmt->attlist, options);
 
 		/*

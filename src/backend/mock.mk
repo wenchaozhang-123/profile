@@ -19,6 +19,7 @@ override CPPFLAGS+= -I$(top_srcdir)/src/backend/libpq \
 # TODO: add ldl for quick hack; we need to figure out why
 # postgres in src/backend/Makefile doesn't need this and -pthread.
 MOCK_LIBS := -ldl $(filter-out -ledit, $(LIBS)) $(LDAP_LIBS_BE) $(ICU_LIBS) $(ZSTD_LIBS)
+MOCK_LIBS += -lgopher
 
 # These files are not linked into test programs.
 EXCL_OBJS=\
@@ -117,7 +118,7 @@ WRAP_FUNCS=$(addprefix $(WRAP_FLAGS), \
 
 # The test target depends on $(OBJFILES) which would update files including mocks.
 %.t: $(OBJFILES) $(CMOCKERY_OBJS) $(MOCK_OBJS) %_test.o
-	$(CXX) $(CFLAGS) $(LDFLAGS) $(call WRAP_FUNCS, $(top_srcdir)/$(subdir)/test/$*_test.c) $(call BACKEND_OBJS, $(top_srcdir)/$(subdir)/$*.o $(patsubst $(MOCK_DIR)/%_mock.o,$(top_builddir)/src/%.o, $^)) $(filter-out %/objfiles.txt, $^) $(MOCK_LIBS) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(call WRAP_FUNCS, $(top_srcdir)/$(subdir)/test/$*_test.c) $(call BACKEND_OBJS, $(top_srcdir)/$(subdir)/$*.o $(patsubst $(MOCK_DIR)/%_mock.o,$(top_builddir)/src/%.o, $^)) $(filter-out %/objfiles.txt, $^) $(MOCK_LIBS) -o $@
 
 # We'd like to call only src/backend, but it seems we should build src/port and
 # src/timezone before src/backend.  This is not the case when main build has finished,

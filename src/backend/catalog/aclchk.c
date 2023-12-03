@@ -922,6 +922,8 @@ objectsInSchemaToOids(ObjectType objtype, List *nspnames)
 				objects = list_concat(objects, objs);
 				objs = getRelationsInNamespace(namespaceId, RELKIND_PARTITIONED_TABLE);
 				objects = list_concat(objects, objs);
+				objs = getRelationsInNamespace(namespaceId, RELKIND_DIRECTORY_TABLE);
+				objects = list_concat(objects, objs);
 				break;
 			case OBJECT_SEQUENCE:
 				objs = getRelationsInNamespace(namespaceId, RELKIND_SEQUENCE);
@@ -3775,6 +3777,9 @@ aclcheck_error(AclResult aclerr, ObjectType objtype,
 					case OBJECT_EXTPROTOCOL:
 						msg = gettext_noop("permission denied for external protocol %s");
 						break;
+					case OBJECT_DIRECTORY_TABLE:
+						msg = gettext_noop("permission denied for directory table %s");
+						break;
 						/* these currently aren't used */
 					case OBJECT_ACCESS_METHOD:
 					case OBJECT_AMOP:
@@ -3905,6 +3910,9 @@ aclcheck_error(AclResult aclerr, ObjectType objtype,
 						break;
 					case OBJECT_EXTPROTOCOL:
 						msg = gettext_noop("must be owner of external protocol %s");
+						break;
+					case OBJECT_DIRECTORY_TABLE:
+						msg = gettext_noop("must be owner of directory table %s");
 						break;
 
 						/*
@@ -6679,7 +6687,8 @@ CopyRelationAcls(Oid srcId, Oid destId)
 
 	if (pg_class_tuple->relkind != RELKIND_RELATION &&
 		pg_class_tuple->relkind != RELKIND_PARTITIONED_TABLE &&
-		pg_class_tuple->relkind != RELKIND_FOREIGN_TABLE)
+		pg_class_tuple->relkind != RELKIND_FOREIGN_TABLE &&
+		pg_class_tuple->relkind != RELKIND_DIRECTORY_TABLE)
 		elog(ERROR, "unexpected relkind %c",  pg_class_tuple->relkind);
 
 	/*

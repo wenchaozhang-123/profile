@@ -4089,6 +4089,7 @@ _copyCopyStmt(const CopyStmt *from)
 	COPY_SCALAR_FIELD(is_from);
 	COPY_SCALAR_FIELD(is_program);
 	COPY_STRING_FIELD(filename);
+	COPY_STRING_FIELD(dirfilename);
 	COPY_NODE_FIELD(options);
 	COPY_NODE_FIELD(whereClause);
 	COPY_NODE_FIELD(sreh);
@@ -6042,6 +6043,18 @@ _copyEphemeralNamedRelationInfo(const EphemeralNamedRelationInfo *from)
 	return newnode;
 }
 
+static CreateDirectoryTableStmt *
+_copyCreateDirectoryTableStmt(const CreateDirectoryTableStmt *from)
+{
+	CreateDirectoryTableStmt *newnode = makeNode(CreateDirectoryTableStmt);
+
+	CopyCreateStmtFields((const CreateStmt *) from, (CreateStmt *) newnode);
+
+	COPY_STRING_FIELD(location);
+	COPY_STRING_FIELD(tablespacename);
+
+	return newnode;
+}
 /*
  * copyObjectImpl -- implementation of copyObject(); see nodes/nodes.h
  *
@@ -7151,6 +7164,10 @@ copyObjectImpl(const void *from)
 		case T_EphemeralNamedRelationInfo:
 			retval = _copyEphemeralNamedRelationInfo(from);
 			break;
+		case T_CreateDirectoryTableStmt:
+			retval = _copyCreateDirectoryTableStmt(from);
+			break;
+
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(from));
 			retval = 0;			/* keep compiler quiet */

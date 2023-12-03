@@ -1238,6 +1238,7 @@ retry:
 		case RELKIND_RELATION:
 		case RELKIND_TOASTVALUE:
 		case RELKIND_MATVIEW:
+		case RELKIND_DIRECTORY_TABLE:
 			Assert(relation->rd_rel->relam != InvalidOid);
 			RelationInitTableAccessMethod(relation);
 			break;
@@ -1281,7 +1282,8 @@ retry:
 	if ((relation->rd_rel->relkind == RELKIND_RELATION && !IsSystemRelation(relation)) ||
 		relation->rd_rel->relkind == RELKIND_PARTITIONED_TABLE ||
 		relation->rd_rel->relkind == RELKIND_FOREIGN_TABLE ||
-		relation->rd_rel->relkind == RELKIND_MATVIEW)
+		relation->rd_rel->relkind == RELKIND_MATVIEW ||
+		relation->rd_rel->relkind == RELKIND_DIRECTORY_TABLE)
 	{
 		/*
 		 * There are many memory allocations in GpPolicyFetch(), especially 
@@ -3714,7 +3716,8 @@ RelationBuildLocalRelation(const char *relname,
 	if (!IsCatalogNamespace(relnamespace) &&
 		(relkind == RELKIND_RELATION ||
 		 relkind == RELKIND_MATVIEW ||
-		 relkind == RELKIND_PARTITIONED_TABLE))
+		 relkind == RELKIND_PARTITIONED_TABLE ||
+		 relkind == RELKIND_DIRECTORY_TABLE))
 		rel->rd_rel->relreplident = REPLICA_IDENTITY_DEFAULT;
 	else
 		rel->rd_rel->relreplident = REPLICA_IDENTITY_NOTHING;
@@ -3787,7 +3790,8 @@ RelationBuildLocalRelation(const char *relname,
 	if (relkind == RELKIND_RELATION ||
 		relkind == RELKIND_SEQUENCE ||
 		relkind == RELKIND_TOASTVALUE ||
-		relkind == RELKIND_MATVIEW)
+		relkind == RELKIND_MATVIEW ||
+		relkind == RELKIND_DIRECTORY_TABLE)
 		RelationInitTableAccessMethod(rel);
 
 	if (relkind == RELKIND_AOSEGMENTS ||
@@ -3900,6 +3904,7 @@ RelationSetNewRelfilenode(Relation relation, char persistence)
 		case RELKIND_RELATION:
 		case RELKIND_TOASTVALUE:
 		case RELKIND_MATVIEW:
+		case RELKIND_DIRECTORY_TABLE:
 			table_relation_set_new_filenode(relation, &newrnode,
 											persistence,
 											&freezeXid, &minmulti);
@@ -4395,7 +4400,8 @@ RelationCacheInitializePhase3(void)
 			(relation->rd_rel->relkind == RELKIND_RELATION ||
 			 relation->rd_rel->relkind == RELKIND_SEQUENCE ||
 			 relation->rd_rel->relkind == RELKIND_TOASTVALUE ||
-			 relation->rd_rel->relkind == RELKIND_MATVIEW))
+			 relation->rd_rel->relkind == RELKIND_MATVIEW ||
+			 relation->rd_rel->relkind == RELKIND_DIRECTORY_TABLE))
 		{
 			RelationInitTableAccessMethod(relation);
 			Assert(relation->rd_tableam != NULL);
@@ -6327,7 +6333,8 @@ load_relcache_init_file(bool shared)
 			if (rel->rd_rel->relkind == RELKIND_RELATION ||
 				rel->rd_rel->relkind == RELKIND_SEQUENCE ||
 				rel->rd_rel->relkind == RELKIND_TOASTVALUE ||
-				rel->rd_rel->relkind == RELKIND_MATVIEW)
+				rel->rd_rel->relkind == RELKIND_MATVIEW ||
+				rel->rd_rel->relkind == RELKIND_DIRECTORY_TABLE)
 				RelationInitTableAccessMethod(rel);
 
 			if (rel->rd_rel->relkind == RELKIND_AOSEGMENTS ||

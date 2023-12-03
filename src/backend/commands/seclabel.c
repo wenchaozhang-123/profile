@@ -60,6 +60,7 @@ SecLabelSupportsObjectType(ObjectType objtype)
 		case OBJECT_TYPE:
 		case OBJECT_VIEW:
 		case OBJECT_PROFILE:
+		case OBJECT_DIRECTORY_TABLE:
 			return true;
 
 		case OBJECT_ACCESS_METHOD:
@@ -190,7 +191,8 @@ ExecSecLabelStmt(SecLabelStmt *stmt)
 				relation->rd_rel->relkind != RELKIND_MATVIEW &&
 				relation->rd_rel->relkind != RELKIND_COMPOSITE_TYPE &&
 				relation->rd_rel->relkind != RELKIND_FOREIGN_TABLE &&
-				relation->rd_rel->relkind != RELKIND_PARTITIONED_TABLE)
+				relation->rd_rel->relkind != RELKIND_PARTITIONED_TABLE &&
+				relation->rd_rel->relkind != RELKIND_DIRECTORY_TABLE)
 				ereport(ERROR,
 						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
 						 errmsg("\"%s\" is not a table, view, materialized view, composite type, or foreign table",

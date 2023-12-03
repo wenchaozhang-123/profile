@@ -344,7 +344,8 @@ analyze_rel_internal(Oid relid, RangeVar *relation,
 	 * Check that it's of an analyzable relkind, and set up appropriately.
 	 */
 	if (onerel->rd_rel->relkind == RELKIND_RELATION ||
-		onerel->rd_rel->relkind == RELKIND_MATVIEW)
+		onerel->rd_rel->relkind == RELKIND_MATVIEW ||
+		onerel->rd_rel->relkind == RELKIND_DIRECTORY_TABLE)
 	{
 		/* Regular table, so we'll use the regular row acquisition function */
 		acquirefunc = acquire_sample_rows;
@@ -1976,7 +1977,8 @@ acquire_inherited_sample_rows(Relation onerel, int elevel,
 
 		/* Check table type (MATVIEW can't happen, but might as well allow) */
 		if (childrel->rd_rel->relkind == RELKIND_RELATION ||
-			childrel->rd_rel->relkind == RELKIND_MATVIEW)
+			childrel->rd_rel->relkind == RELKIND_MATVIEW ||
+			childrel->rd_rel->relkind == RELKIND_DIRECTORY_TABLE)
 		{
 			/* Regular table, so use the regular row acquisition function */
 			acquirefunc = acquire_sample_rows;

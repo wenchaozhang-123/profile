@@ -52,6 +52,7 @@
 #include <limits.h>
 
 #include "access/tableam.h"
+#include "catalog/dirtable.h"
 #include "catalog/index.h"
 #include "catalog/namespace.h"
 #include "catalog/pg_am.h"
@@ -291,7 +292,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 		CreateDomainStmt CreateExtensionStmt CreateGroupStmt CreateOpClassStmt
 		CreateOpFamilyStmt AlterOpFamilyStmt CreatePLangStmt
 		CreateSchemaStmt CreateSeqStmt CreateStmt CreateStatsStmt CreateTableSpaceStmt
-		CreateFdwStmt CreateForeignServerStmt CreateForeignTableStmt
+		CreateFdwStmt CreateForeignServerStmt CreateForeignTableStmt CreateDirectoryTableStmt
 		CreateAssertionStmt CreateTransformStmt CreateTrigStmt CreateEventTrigStmt
 		CreateUserStmt CreateUserMappingStmt CreateRoleStmt CreatePolicyStmt
 		CreatedbStmt CreateWarehouseStmt DeclareCursorStmt DefineStmt DeleteStmt DiscardStmt DoStmt
@@ -409,7 +410,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 %type <str>		copy_file_name
 				access_method_clause attr_name
 				table_access_method_clause name cursor_name file_name
-				opt_index_name cluster_index_specification
+				opt_index_name cluster_index_specification opt_file_name
 
 %type <list>	func_name handler_name qual_Op qual_all_Op subquery_Op
 				opt_class opt_inline_handler opt_validator validator_clause
@@ -757,7 +758,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 
 	DATA_P DATABASE DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
 	DEFERRABLE DEFERRED DEFINER DELETE_P DELIMITER DELIMITERS DEPENDS DEPTH DESC
-	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DO DOCUMENT_P DOMAIN_P
+	DETACH DICTIONARY DIRECTORY DISABLE_P DISCARD DISTINCT DO DOCUMENT_P DOMAIN_P
 	DOUBLE_P DROP
 
 	EACH ELSE ENABLE_P ENCODING ENCRYPTED END_P ENDPOINT ENUM_P ESCAPE EVENT EXCEPT
@@ -1424,6 +1425,7 @@ stmt:
 			| CreateCastStmt
 			| CreateConversionStmt
 			| CreateDomainStmt
+			| CreateDirectoryTableStmt
 			| CreateExtensionStmt
 			| CreateExternalStmt
 			| CreateFdwStmt
@@ -2858,6 +2860,28 @@ AlterTableStmt:
 					n->roles = $9;
 					n->new_tablespacename = $12;
 					n->nowait = $13;
+					$$ = (Node *)n;
+				}
+		|	ALTER DIRECTORY TABLE ALL IN_P TABLESPACE name SET TABLESPACE name opt_nowait
+				{
+					AlterTableMoveAllStmt *n =
+						makeNode(AlterTableMoveAllStmt);
+					n->orig_tablespacename = $7;
+					n->objtype = OBJECT_DIRECTORY_TABLE;
+					n->roles = NIL;
+					n->new_tablespacename = $10;
+					n->nowait = $11;
+					$$ = (Node *)n;
+				}
+		|	ALTER DIRECTORY TABLE ALL IN_P TABLESPACE name OWNED BY role_list SET TABLESPACE name opt_nowait
+				{
+					AlterTableMoveAllStmt *n =
+						makeNode(AlterTableMoveAllStmt);
+					n->orig_tablespacename = $7;
+					n->objtype = OBJECT_DIRECTORY_TABLE;
+					n->roles = $10;
+					n->new_tablespacename = $13;
+					n->nowait = $14;
 					$$ = (Node *)n;
 				}
 		|	ALTER EXTERNAL TABLE relation_expr alter_table_cmds
@@ -4489,7 +4513,7 @@ ClosePortalStmt:
  *****************************************************************************/
 
 CopyStmt:	COPY opt_binary qualified_name opt_column_list
-			copy_from opt_program copy_file_name copy_delimiter opt_with
+			copy_from opt_program copy_file_name opt_file_name copy_delimiter opt_with
 			copy_options where_clause OptSingleRowErrorHandling
 				{
 					CopyStmt *n = makeNode(CopyStmt);
@@ -4499,8 +4523,9 @@ CopyStmt:	COPY opt_binary qualified_name opt_column_list
 					n->is_from = $5;
 					n->is_program = $6;
 					n->filename = $7;
-					n->whereClause = $11;
-					n->sreh = $12;
+					n->dirfilename = $8;
+					n->whereClause = $12;
+					n->sreh = $13;
 
 					if (n->is_program && n->filename == NULL)
 						ereport(ERROR,
@@ -4518,10 +4543,10 @@ CopyStmt:	COPY opt_binary qualified_name opt_column_list
 					/* Concatenate user-supplied flags */
 					if ($2)
 						n->options = lappend(n->options, $2);
-					if ($8)
-						n->options = lappend(n->options, $8);
-					if ($10)
-						n->options = list_concat(n->options, $10);
+					if ($9)
+						n->options = lappend(n->options, $9);
+					if ($11)
+						n->options = list_concat(n->options, $11);
 					$$ = (Node *)n;
 				}
 			| COPY '(' PreparableStmt ')' TO opt_program copy_file_name opt_with copy_options
@@ -4573,6 +4598,11 @@ copy_file_name:
 			Sconst									{ $$ = $1; }
 			| STDIN									{ $$ = NULL; }
 			| STDOUT								{ $$ = NULL; }
+		;
+
+opt_file_name:
+			Sconst									{ $$ = $1; }
+			| /* EMPTY */							{ $$ = NULL; }
 		;
 
 copy_options: copy_opt_list							{ $$ = $1; }
@@ -7976,6 +8006,61 @@ AlterUserMappingStmt: ALTER USER MAPPING FOR auth_ident SERVER name alter_generi
 				}
 		;
 
+
+/*****************************************************************************
+ *
+ *		QUERY:
+ *             CREATE DIRECTORY TABLE relname SERVER name (...)
+ *
+ *****************************************************************************/
+
+CreateDirectoryTableStmt:
+		CREATE DIRECTORY TABLE qualified_name LOCATION Sconst
+			table_access_method_clause OptTableSpace OptDistributedBy
+				{
+					CreateDirectoryTableStmt *n = makeNode(CreateDirectoryTableStmt);
+					$4->relpersistence = RELPERSISTENCE_PERMANENT;
+					n->base.relation = $4;
+					n->base.tableElts = GetDirectoryTableBuiltinColumns();
+					n->base.inhRelations = NIL;
+					n->base.ofTypename = NULL;
+					n->base.constraints = NIL;
+					n->base.options = NIL;
+					n->base.oncommit = ONCOMMIT_NOOP;
+					/* TODO: support tablespace for data table ? */
+					n->base.tablespacename = NULL;
+					n->base.if_not_exists = false;
+					n->base.distributedBy = (DistributedBy *) $9;
+					n->base.relKind = RELKIND_DIRECTORY_TABLE;
+					n->location = $6;
+					n->tablespacename = $8;
+
+					$$ = (Node *) n;
+				}
+		| CREATE DIRECTORY TABLE IF_P NOT EXISTS qualified_name LOCATION Sconst
+			table_access_method_clause OptTableSpace OptDistributedBy
+				{
+					CreateDirectoryTableStmt *n = makeNode(CreateDirectoryTableStmt);
+					$7->relpersistence = RELPERSISTENCE_PERMANENT;
+					n->base.relation = $7;
+					n->base.tableElts = GetDirectoryTableBuiltinColumns();
+					n->base.inhRelations = NIL;
+					n->base.ofTypename = NULL;
+					n->base.constraints = NIL;
+					n->base.options = NIL;
+					n->base.oncommit = ONCOMMIT_NOOP;
+					/* TODO: support tablespace for data table ? */
+					n->base.tablespacename = NULL;
+					n->base.if_not_exists = true;
+					n->base.distributedBy = (DistributedBy *) $12;
+					n->base.relKind = RELKIND_DIRECTORY_TABLE;
+					n->location = $9;
+					n->tablespacename = $11;
+
+					$$ = (Node *) n;
+				}
+		;
+
 /*****************************************************************************
  *
  *		QUERIES:
@@ -9108,6 +9193,7 @@ object_type_any_name:
 			| FOREIGN TABLE							{ $$ = OBJECT_FOREIGN_TABLE; }
 			| EXTERNAL TABLE						{ $$ = OBJECT_FOREIGN_TABLE; }
 			| EXTERNAL WEB TABLE					{ $$ = OBJECT_FOREIGN_TABLE; }	
+			| DIRECTORY TABLE						{ $$ = OBJECT_DIRECTORY_TABLE; }
 			| COLLATION								{ $$ = OBJECT_COLLATION; }
 			| CONVERSION_P							{ $$ = OBJECT_CONVERSION; }
 			| STATISTICS							{ $$ = OBJECT_STATISTIC_EXT; }
@@ -11619,6 +11705,26 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 					n->missing_ok = true;
 					$$ = (Node *)n;
 				}
+			| ALTER DIRECTORY TABLE relation_expr RENAME TO name
+				{
+					RenameStmt *n = makeNode(RenameStmt);
+					n->renameType = OBJECT_DIRECTORY_TABLE;
+					n->relation = $4;
+					n->subname = NULL;
+					n->newname = $7;
+					n->missing_ok = false;
+					$$ = (Node *)n;
+				}
+			| ALTER DIRECTORY TABLE IF_P EXISTS relation_expr RENAME TO name
+				{
+					RenameStmt *n = makeNode(RenameStmt);
+					n->renameType = OBJECT_DIRECTORY_TABLE;
+					n->relation = $6;
+					n->subname = NULL;
+					n->newname = $9;
+					n->missing_ok = true;
+					$$ = (Node *)n;
+				}
 			| ALTER TABLE relation_expr RENAME opt_column name TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
@@ -12180,6 +12286,24 @@ AlterObjectSchemaStmt:
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_FOREIGN_TABLE;
+					n->relation = $6;
+					n->newschema = $9;
+					n->missing_ok = true;
+					$$ = (Node *)n;
+				}
+			| ALTER DIRECTORY TABLE relation_expr SET SCHEMA name
+				{
+					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					n->objectType = OBJECT_DIRECTORY_TABLE;
+					n->relation = $4;
+					n->newschema = $7;
+					n->missing_ok = false;
+					$$ = (Node *)n;
+				}
+			| ALTER DIRECTORY TABLE IF_P EXISTS relation_expr SET SCHEMA name
+				{
+					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					n->objectType = OBJECT_DIRECTORY_TABLE;
 					n->relation = $6;
 					n->newschema = $9;
 					n->missing_ok = true;
@@ -18756,6 +18880,7 @@ unreserved_keyword:
 			| DEPTH
 			| DETACH
 			| DICTIONARY
+			| DIRECTORY
 			| DISABLE_P
 			| DISCARD
 			| DOCUMENT_P
@@ -19677,6 +19802,7 @@ bare_label_keyword:
 			| DESC
 			| DETACH
 			| DICTIONARY
+			| DIRECTORY
 			| DISABLE_P
 			| DISCARD
 			| DISTINCT

@@ -1359,6 +1359,7 @@ _equalCopyStmt(const CopyStmt *a, const CopyStmt *b)
 	COMPARE_SCALAR_FIELD(is_from);
 	COMPARE_SCALAR_FIELD(is_program);
 	COMPARE_STRING_FIELD(filename);
+	COMPARE_STRING_FIELD(dirfilename);
 	COMPARE_NODE_FIELD(options);
 	COMPARE_NODE_FIELD(whereClause);
 	COMPARE_NODE_FIELD(sreh);
@@ -3334,6 +3335,18 @@ _equalPartitionCmd(const PartitionCmd *a, const PartitionCmd *b)
 	return true;
 }
 
+static bool
+_equalCreateDirectoryTableStmt(const CreateDirectoryTableStmt *a, const CreateDirectoryTableStmt *b)
+{
+	if (!_equalCreateStmt(&a->base, &b->base))
+		return false;
+
+	COMPARE_STRING_FIELD(location);
+	COMPARE_STRING_FIELD(tablespacename);
+
+	return true;
+}
+
 /*
  * Stuff from pg_list.h
  */
@@ -4248,6 +4261,9 @@ equal(const void *a, const void *b)
 			break;
 		case T_DistributionKeyElem:
 			retval = _equalDistributionKeyElem(a, b);
+			break;
+		case T_CreateDirectoryTableStmt:
+			retval = _equalCreateDirectoryTableStmt(a, b);
 			break;
 
 		default:
