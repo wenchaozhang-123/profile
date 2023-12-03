@@ -22,10 +22,9 @@
 #include "utils/syscache.h"
 #include "utils/builtins.h"
 #include "utils/acl.h"
+#include "storage/ufs_connection.h"
 #include "cdb/cdbvars.h"
 #include "cdb/cdbdisp_query.h"
-
-#define DFS_MAX_PATH_SIZE    256
 
 bool
 IsDfsTableSpaceStmt(CreateTableSpaceStmt *stmt)
