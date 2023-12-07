@@ -549,6 +549,7 @@ pg_relation_size(PG_FUNCTION_ARGS)
 
 	forkNumber = forkname_to_number(text_to_cstring(forkName));
 
+	// TODO directory table
 	size = calculate_relation_size(rel, forkNumber);
 
 	if (Gp_role == GP_ROLE_DISPATCH)

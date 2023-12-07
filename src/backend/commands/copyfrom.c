@@ -1302,7 +1302,8 @@ CopyFrom(CopyFromState cstate)
 	ExecInitResultRelation(estate, resultRelInfo, 1);
 
 	/* Verify the named relation is a valid target for INSERT */
-	CheckValidResultRel(resultRelInfo, CMD_INSERT);
+	if (!(cstate->rel->rd_rel->relkind == RELKIND_DIRECTORY_TABLE))
+		CheckValidResultRel(resultRelInfo, CMD_INSERT);
 
 	ExecOpenIndices(resultRelInfo, false);
 

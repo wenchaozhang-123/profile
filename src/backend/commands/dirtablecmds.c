@@ -41,13 +41,24 @@
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
 #include "parser/parse_func.h"
-//#include "storage/ufs.h"
 #include "tcop/utility.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
+
+#define DIRECTORY_TABLE_FUNCTION_COLUMNS	7
+
+typedef struct TableFunctionContext
+{
+	Relation 		relation;
+	TableScanDesc	scanDesc;
+	TupleTableSlot	*slot;
+	DirectoryTable 	*dirTable;
+} TableFunctionContext;
+
+Datum directory_table(PG_FUNCTION_ARGS);
 
 static char *
 getDirectoryTablePath(Oid spcId, Oid dbId, RelFileNodeId relId)
