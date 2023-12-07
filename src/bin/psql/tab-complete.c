@@ -470,6 +470,14 @@ static const SchemaQuery Query_for_list_of_tables = {
 	.result = "pg_catalog.quote_ident(c.relname)",
 };
 
+static const SchemaQuery Query_for_list_of_directory_tables = {
+	.catname = "pg_catalog.pg_class c",
+	.selcondition = "c.relkind IN (" CppAsString2(RELKIND_DIRECTORY_TABLE) ")",
+	.viscondition = "pg_catalog.pg_table_is_visible(c.oid)",
+	.namespace = "c.relnamespace",
+	.result = "pg_catalog.quote_ident(c.relname)",
+};
+
 static const SchemaQuery Query_for_list_of_partitioned_tables = {
 	.catname = "pg_catalog.pg_class c",
 	.selcondition = "c.relkind IN (" CppAsString2(RELKIND_PARTITIONED_TABLE) ")",
@@ -556,6 +564,7 @@ static const SchemaQuery Query_for_list_of_selectables = {
 	.catname = "pg_catalog.pg_class c",
 	.selcondition =
 	"c.relkind IN (" CppAsString2(RELKIND_RELATION) ", "
+	CppAsString2(RELKIND_DIRECTORY_TABLE) ", "
 	CppAsString2(RELKIND_SEQUENCE) ", "
 	CppAsString2(RELKIND_VIEW) ", "
 	CppAsString2(RELKIND_MATVIEW) ", "
@@ -586,6 +595,7 @@ static const SchemaQuery Query_for_list_of_analyzables = {
 	.catname = "pg_catalog.pg_class c",
 	.selcondition =
 	"c.relkind IN (" CppAsString2(RELKIND_RELATION) ", "
+	CppAsString2(RELKIND_DIRECTORY_TABLE) ", "
 	CppAsString2(RELKIND_PARTITIONED_TABLE) ", "
 	CppAsString2(RELKIND_MATVIEW) ", "
 	CppAsString2(RELKIND_FOREIGN_TABLE) ")",
@@ -599,6 +609,7 @@ static const SchemaQuery Query_for_list_of_indexables = {
 	.catname = "pg_catalog.pg_class c",
 	.selcondition =
 	"c.relkind IN (" CppAsString2(RELKIND_RELATION) ", "
+	CppAsString2(RELKIND_DIRECTORY_TABLE) ", "
 	CppAsString2(RELKIND_PARTITIONED_TABLE) ", "
 	CppAsString2(RELKIND_MATVIEW) ")",
 	.viscondition = "pg_catalog.pg_table_is_visible(c.oid)",
@@ -617,7 +628,7 @@ static const SchemaQuery Query_for_list_of_clusterables = {
 	.catname = "pg_catalog.pg_class c",
 	.selcondition =
 	"c.relkind IN (" CppAsString2(RELKIND_RELATION) ", "
-	CppAsString2(RELKIND_MATVIEW) ")",
+	CppAsString2(RELKIND_MATVIEW) ", " CppAsString2(RELKIND_DIRECTORY_TABLE) ")",
 	.viscondition = "pg_catalog.pg_table_is_visible(c.oid)",
 	.namespace = "c.relnamespace",
 	.result = "pg_catalog.quote_ident(c.relname)",
@@ -1099,6 +1110,7 @@ static const pgsql_thing_t words_after_create[] = {
 	{"DATABASE", Query_for_list_of_databases},
 	{"DEFAULT PRIVILEGES", NULL, NULL, NULL, THING_NO_CREATE | THING_NO_DROP},
 	{"DICTIONARY", Query_for_list_of_ts_dictionaries, NULL, NULL, THING_NO_SHOW},
+	{"DIRECTORY TABLE", NULL, NULL, &Query_for_list_of_directory_tables},
 	{"DOMAIN", NULL, NULL, &Query_for_list_of_domains},
 	{"EVENT TRIGGER", NULL, NULL, NULL},
 	{"EXTENSION", Query_for_list_of_extensions},
@@ -1807,6 +1819,16 @@ psql_completion(const char *text, int start, int end)
 		COMPLETE_WITH("ADD", "ALTER", "DISABLE TRIGGER", "DROP", "ENABLE",
 					  "INHERIT", "NO INHERIT", "OPTIONS", "OWNER TO",
 					  "RENAME", "SET", "VALIDATE CONSTRAINT");
+
+	/* ALTER DIRECTORY */
+	else if (Matches("ALTER", "DIRECTORY"))
+		COMPLETE_WITH("TABLE");
+
+	/* ALTER DIRECTORY TABLE <name> */
+	else if (Matches("ALTER", "DIRECTORY", "TABLE", MatchAny))
+		COMPLETE_WITH("ALTER", "DISABLE TRIGGER", "ENABLE",
+					  "OPTIONS", "OWNER TO",
+					  "RENAME", "SET");
 
 	/* ALTER INDEX */
 	else if (Matches("ALTER", "INDEX"))
@@ -3230,6 +3252,7 @@ psql_completion(const char *text, int start, int end)
 			 Matches("DROP", "EVENT", "TRIGGER", MatchAny) ||
 			 Matches("DROP", "FOREIGN", "DATA", "WRAPPER", MatchAny) ||
 			 Matches("DROP", "FOREIGN", "TABLE", MatchAny) ||
+			 Matches("DROP", "DIRECTORY", "TABLE", MatchAny) ||
 			 Matches("DROP", "TEXT", "SEARCH", "CONFIGURATION|DICTIONARY|PARSER|TEMPLATE", MatchAny))
 		COMPLETE_WITH("CASCADE", "RESTRICT");
 
@@ -3261,6 +3284,12 @@ psql_completion(const char *text, int start, int end)
 		COMPLETE_WITH("VIEW");
 	else if (Matches("DROP", "MATERIALIZED", "VIEW"))
 		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_matviews, NULL);
+
+	/* DROP DIRECTORY TABLE */
+	else if (Matches("DROP", "DIRECTORY"))
+		COMPLETE_WITH("TABLE");
+	else if (Matches("DROP", "DIRECTORY", "TABLE"))
+		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_directory_tables, NULL);
 
 	/* DROP OWNED BY */
 	else if (Matches("DROP", "OWNED"))
@@ -3809,7 +3838,7 @@ psql_completion(const char *text, int start, int end)
 	else if (Matches("SECURITY", "LABEL", "ON") ||
 			 Matches("SECURITY", "LABEL", "FOR", MatchAny, "ON"))
 		COMPLETE_WITH("TABLE", "COLUMN", "AGGREGATE", "DATABASE", "DOMAIN",
-					  "EVENT TRIGGER", "FOREIGN TABLE", "FUNCTION",
+					  "EVENT TRIGGER", "FOREIGN TABLE", "DIRECTORY TABLE", "FUNCTION",
 					  "LARGE OBJECT", "MATERIALIZED VIEW", "LANGUAGE",
 					  "PUBLICATION", "PROCEDURE", "ROLE", "ROUTINE", "SCHEMA",
 					  "SEQUENCE", "SUBSCRIPTION", "TABLESPACE", "TYPE", "VIEW");
@@ -4157,6 +4186,8 @@ psql_completion(const char *text, int start, int end)
 		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_matviews, NULL);
 	else if (TailMatchesCS("\\dE*"))
 		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_foreign_tables, NULL);
+	else if (TailMatchesCS("\\dY*"))
+		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_directory_tables, NULL);
 	else if (TailMatchesCS("\\dy*"))
 		COMPLETE_WITH_QUERY(Query_for_list_of_event_triggers);
 
@@ -4195,6 +4226,8 @@ psql_completion(const char *text, int start, int end)
 			COMPLETE_WITH("TRIGGER");
 		else if (TailMatches("CREATE|ALTER|DROP", "FOREIGN"))
 			COMPLETE_WITH("DATA WRAPPER", "TABLE");
+		else if (TailMatches("CREATE|ALTER|DROP", "DIRECTORY"))
+			COMPLETE_WITH("TABLE");
 		else if (TailMatches("ALTER", "LARGE"))
 			COMPLETE_WITH("OBJECT");
 		else if (TailMatches("CREATE|ALTER|DROP", "MATERIALIZED"))
