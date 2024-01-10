@@ -1509,6 +1509,12 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 		 * The OIDs are carried out-of-band.
 		 */
 
+		if (relkind == RELKIND_DIRECTORY_TABLE)
+		{
+			CreateDirectoryTableStmt *dtStmt = (CreateDirectoryTableStmt *) stmt;
+			dtStmt->relnode = rel->rd_node.relNode;
+		}
+
 		CdbDispatchUtilityStatement((Node *) stmt,
 									DF_CANCEL_ON_ERROR |
 									DF_NEED_TWO_PHASE |
