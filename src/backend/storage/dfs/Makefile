@@ -13,7 +13,6 @@ top_builddir = ../../../..
 include $(top_builddir)/src/Makefile.global
 
 OBJS = \
-	dfs_option.o \
 	ufs.o \
 	ufs_connection.o
 
