@@ -192,7 +192,7 @@ func (l *Loader) Initialize(cmd *cobra.Command) {
 	flagSet.BoolVar(&l.option.ForcePasswordAuth, option.FORCE_PASSWORD_AUTH, false, "Force a password prompt (default false)")
 	flagSet.StringVar(&l.option.Table, option.TABLE, "", "Table to load to")
 	flagSet.StringVar(&l.option.Tag, option.TAG, "", "File tag")
-	flagSet.StringVar(&l.option.DestPath, option.DEST_PATH, "", "Path relative to the table root path (default: root path of the table)")
+	flagSet.StringVar(&l.option.DestPath, option.DEST_PATH, "", "Path relative to the table root directory (default: root directory of the table)")
 	flagSet.StringSliceVar(&l.option.InputFile, option.INPUT_FILE, []string{}, "Input files or directory")
 	flagSet.IntVar(&l.option.NumTasks, option.TASKS, 1, "The maximum number of files that concurrently loads")
 	flagSet.StringVar(&l.option.LogFile, option.LOGFILE, "", "Log output to logfile (default none)")

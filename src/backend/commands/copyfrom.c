@@ -735,7 +735,7 @@ formDirTableSlot(CopyFromState cstate,
 	TupleDesc	tupDesc;
 	AttrNumber	num_phys_attrs;
 	ListCell   *cur;
-	char	   *field[4];
+	char	   *field[5];
 	FmgrInfo   *in_functions = cstate->in_functions;
 	Oid		   *typioparams = cstate->typioparams;
 	List	   *attnumlist = cstate->qd_attnumlist;

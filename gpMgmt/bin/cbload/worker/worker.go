@@ -117,7 +117,7 @@ loop:
 			continue
 		}
 
-		log.Logger.Infof("Worker [%v]: loading file \"%v\"...", w.id, file)
+		log.Logger.Infof("Worker [%v]: loading file \"%v\" into \"%v:%v\"...", w.id, file, w.manager.table, w.destFiles[i])
 
 		_, err = w.conn.CopyFrom(w.context,
 			bufio.NewReader(fh),

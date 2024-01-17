@@ -31,7 +31,7 @@ static const DirTableColumnDesc dirTableColumns[] = {
 	{"size", "int8"},
 	{"last_modified", "timestamptz"},
 	{"md5", "text"},
-	{"tags", "text"}
+	{"tag", "text"}
 };
 
 /*
