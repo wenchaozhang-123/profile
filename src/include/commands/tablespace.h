@@ -43,6 +43,9 @@ typedef struct TableSpaceOpts
 	float8		seq_page_cost;
 	int			effective_io_concurrency;
 	int			maintenance_io_concurrency;
+	bool 		stage;
+	char		server[MAXPGPATH];
+	char 		path[MAXPGPATH];
 } TableSpaceOpts;
 
 extern Oid	CreateTableSpace(CreateTableSpaceStmt *stmt);
