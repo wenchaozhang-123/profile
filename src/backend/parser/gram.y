@@ -57,6 +57,7 @@
 #include "catalog/pg_am.h"
 #include "catalog/pg_foreign_server.h"
 #include "catalog/pg_trigger.h"
+#include "catalog/pg_directory_table.h"
 #include "commands/defrem.h"
 #include "commands/trigger.h"
 #include "nodes/makefuncs.h"
@@ -283,15 +284,16 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 		AlterObjectDependsStmt AlterObjectSchemaStmt AlterOwnerStmt
 		AlterOperatorStmt AlterTypeStmt AlterSeqStmt AlterSystemStmt AlterTableStmt
 		AlterTblSpcStmt AlterExtensionStmt AlterExtensionContentsStmt
-		AlterCompositeTypeStmt AlterUserMappingStmt
+		AlterCompositeTypeStmt AlterUserMappingStmt AlterStorageUserMappingStmt
 		AlterRoleStmt AlterRoleSetStmt AlterPolicyStmt AlterStatsStmt
 		AlterDefaultPrivilegesStmt DefACLAction
 		AnalyzeStmt CallStmt ClosePortalStmt ClusterStmt CommentStmt
 		ConstraintsSetStmt CopyStmt CreateAsStmt CreateCastStmt
 		CreateDomainStmt CreateExtensionStmt CreateGroupStmt CreateOpClassStmt
 		CreateOpFamilyStmt AlterOpFamilyStmt CreatePLangStmt
-		CreateSchemaStmt CreateSeqStmt CreateStmt CreateStatsStmt CreateTableSpaceStmt
-		CreateFdwStmt CreateForeignServerStmt CreateForeignTableStmt
+		CreateSchemaStmt CreateSeqStmt CreateStmt CreateStatsStmt
+		CreateStorageServerStmt CreateStorageUserMappingStmt
+		CreateTableSpaceStmt CreateFdwStmt CreateForeignServerStmt CreateForeignTableStmt CreateDirectoryTableStmt
 		CreateAssertionStmt CreateTransformStmt CreateTrigStmt CreateEventTrigStmt
 		CreateUserStmt CreateUserMappingStmt CreateRoleStmt CreatePolicyStmt
 		CreatedbStmt CreateWarehouseStmt DeclareCursorStmt DefineStmt DeleteStmt DiscardStmt DoStmt
@@ -299,7 +301,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 		DropCastStmt DropRoleStmt
 		DropdbStmt DropTableSpaceStmt
 		DropTransformStmt
-		DropUserMappingStmt ExplainStmt FetchStmt
+		DropUserMappingStmt DropStorageUserMappingStmt ExplainStmt FetchStmt
 		GrantStmt GrantRoleStmt ImportForeignSchemaStmt IndexStmt InsertStmt
 		ListenStmt LoadStmt LockStmt NotifyStmt ExplainableStmt PreparableStmt
 		CreateFunctionStmt AlterFunctionStmt ReindexStmt RemoveAggrStmt
@@ -640,6 +642,8 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 %type <list>	constraints_set_list
 %type <boolean> constraints_set_mode
 %type <str>		OptTableSpace OptConsTableSpace
+%type <defelt>  OptServer
+
 %type <rolespec> OptTableSpaceOwner
 %type <node>    DistributedBy OptDistributedBy 
 %type <ival>	OptTabPartitionRangeInclusive
@@ -755,7 +759,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 
 	DATA_P DATABASE DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
 	DEFERRABLE DEFERRED DEFINER DELETE_P DELIMITER DELIMITERS DEPENDS DEPTH DESC
-	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DO DOCUMENT_P DOMAIN_P
+	DETACH DICTIONARY DIRECTORY DISABLE_P DISCARD DISTINCT DO DOCUMENT_P DOMAIN_P
 	DOUBLE_P DROP
 
 	EACH ELSE ENABLE_P ENCODING ENCRYPTED END_P ENDPOINT ENUM_P ESCAPE EVENT EXCEPT
@@ -1408,6 +1412,7 @@ stmt:
 			| AlterTSConfigurationStmt
 			| AlterTSDictionaryStmt
 			| AlterUserMappingStmt
+			| AlterStorageUserMappingStmt
 			| AnalyzeStmt
 			| CallStmt
 			| CheckPointStmt
@@ -1422,6 +1427,7 @@ stmt:
 			| CreateCastStmt
 			| CreateConversionStmt
 			| CreateDomainStmt
+			| CreateDirectoryTableStmt
 			| CreateExtensionStmt
 			| CreateExternalStmt
 			| CreateFdwStmt
@@ -1445,6 +1451,8 @@ stmt:
 			| CreateStmt
 			| CreateSubscriptionStmt
 			| CreateStatsStmt
+			| CreateStorageServerStmt
+			| CreateStorageUserMappingStmt
 			| CreateTableSpaceStmt
 			| CreateTaskStmt
 			| CreateTransformStmt
@@ -1475,6 +1483,7 @@ stmt:
 			| DropRoleStmt
 			| DropUserMappingStmt
 			| DropdbStmt
+			| DropStorageUserMappingStmt
 			| DropWarehouseStmt
 			| ExecuteStmt
 			| ExplainStmt
@@ -7137,13 +7146,20 @@ opt_procedural:
  *
  *****************************************************************************/
 
-CreateTableSpaceStmt: CREATE TABLESPACE name OptTableSpaceOwner LOCATION Sconst opt_reloptions
+CreateTableSpaceStmt: CREATE TABLESPACE name OptTableSpaceOwner LOCATION Sconst opt_reloptions OptServer
 				{
 					CreateTableSpaceStmt *n = makeNode(CreateTableSpaceStmt);
 					n->tablespacename = $3;
 					n->owner = $4;
 					n->location = $6;
 					n->options = $7;
+
+                    if ($8 != NULL)
+                    {
+                        n->options = lappend(n->options, $8);
+                        n->options = lappend(n->options,
+                                                            makeDefElem("path", (Node *)makeString($6), @6));
+                    }
 					$$ = (Node *) n;
 				}
 		;
@@ -7151,6 +7167,10 @@ CreateTableSpaceStmt: CREATE TABLESPACE name OptTableSpaceOwner LOCATION Sconst 
 OptTableSpaceOwner: OWNER RoleSpec		{ $$ = $2; }
 			| /*EMPTY */				{ $$ = NULL; }
 		;
+
+OptServer:      SERVER name                     { $$ = makeDefElem("server", (Node *)makeString($2), @1); }
+                    | /* EMPTY */                   { $$ = NULL; }
+                ;
 
 /*****************************************************************************
  *
@@ -7589,7 +7609,7 @@ AlterFdwStmt: ALTER FOREIGN DATA_P WRAPPER name opt_fdw_options alter_generic_op
 				}
 		;
 
-/* Options definition for CREATE FDW, SERVER and USER MAPPING */
+/* Options definition for CREATE FDW, SERVER, STORAGE SERVER and USER MAPPING */
 create_generic_options:
 			OPTIONS '(' generic_option_list ')'			{ $$ = $3; }
 			| /*EMPTY*/									{ $$ = NIL; }
@@ -7740,6 +7760,32 @@ AlterForeignServerStmt: ALTER SERVER name foreign_server_version alter_generic_o
 					$$ = (Node *) n;
 				}
 		;
+
+/*****************************************************************************
+ *
+ *		QUERY:
+ *             CREATE STORAGE SERVER name [OPTIONS]
+ *
+ *****************************************************************************/
+
+CreateStorageServerStmt:
+        CREATE STORAGE SERVER name create_generic_options
+            {
+                CreateStorageServerStmt *n = makeNode(CreateStorageServerStmt);
+                n->servername = $4;
+                n->if_not_exists = false;
+                n->options = $5;
+                $$ = (Node *) n;
+            }
+        | CREATE STORAGE SERVER IF_P NOT EXISTS name create_generic_options
+            {
+                CreateStorageServerStmt *n = makeNode(CreateStorageServerStmt);
+                n->servername = $7;
+                n->if_not_exists = true;
+                n->options = $8;
+                $$ = (Node *) n;
+            }
+        ;
 
 /*****************************************************************************
  *
@@ -7961,6 +8007,133 @@ AlterUserMappingStmt: ALTER USER MAPPING FOR auth_ident SERVER name alter_generi
 					$$ = (Node *) n;
 				}
 		;
+
+/*****************************************************************************
+ *
+ *		QUERY:
+ *             CREAT STORAGE USER MAPPING FOR auth_ident STORAGE SERVER name [OPTIONS]
+ *
+ *****************************************************************************/
+
+CreateStorageUserMappingStmt:
+            CREATE STORAGE USER MAPPING FOR auth_ident STORAGE SERVER name create_generic_options
+                {
+                    CreateStorageUserMappingStmt *n = makeNode(CreateStorageUserMappingStmt);
+                    n->user = $6;
+                    n->servername = $9;
+                    n->options = $10;
+                    n->if_not_exists = false;
+                    $$ = (Node *) n;
+                }
+            | CREATE STORAGE USER MAPPING IF_P NOT EXISTS FOR auth_ident
+            STORAGE SERVER name create_generic_options
+                {
+                    CreateStorageUserMappingStmt *n = makeNode(CreateStorageUserMappingStmt);
+                    n->user = $9;
+                    n->servername = $12;
+                    n->options = $13;
+                    n->if_not_exists = true;
+                    $$ = (Node *) n;
+                }
+            ;
+
+/*****************************************************************************
+ *
+ *		QUERY :
+ *				DROP STORAGE USER MAPPING FOR auth_ident STORAGE SERVER name
+ *
+ * XXX you'd think this should have a CASCADE/RESTRICT option, even if it's
+ * only pro forma; but the SQL standard doesn't show one.
+ ****************************************************************************/
+
+DropStorageUserMappingStmt:
+            DROP STORAGE USER MAPPING FOR auth_ident STORAGE SERVER name
+                {
+                    DropStorageUserMappingStmt *n = makeNode(DropStorageUserMappingStmt);
+                    n->user = $6;
+                    n->servername = $9;
+                    n->missing_ok = false;
+                    $$ = (Node *) n;
+                }
+            | DROP STORAGE USER MAPPING IF_P EXISTS FOR auth_ident STORAGE SERVER name
+                {
+                    DropStorageUserMappingStmt *n = makeNode(DropStorageUserMappingStmt);
+                    n->user = $8;
+                    n->servername = $11;
+                    n->missing_ok = true;
+                    $$ = (Node *) n;
+                }
+            ;
+
+/*****************************************************************************
+ *
+ *		QUERY :
+ *				ALTER STORAGE USER MAPPING FOR auth_ident STORAGE SERVER name OPTIONS
+ *
+ ****************************************************************************/
+
+AlterStorageUserMappingStmt:
+            ALTER STORAGE USER MAPPING FOR auth_ident STORAGE SERVER name alter_generic_options
+                {
+                    AlterStorageUserMappingStmt *n = makeNode(AlterStorageUserMappingStmt);
+                    n->user = $6;
+                    n->servername = $9;
+                    n->options = $10;
+                    $$ = (Node *) n;
+                }
+            ;
+
+/*****************************************************************************
+ *
+ *		QUERY:
+ *             CREATE DIRECTORY TABLE relname SERVER name (...)
+ *
+ *****************************************************************************/
+
+CreateDirectoryTableStmt:
+            CREATE DIRECTORY TABLE qualified_name
+            table_access_method_clause OptTableSpace OptDistributedBy
+                {
+                    CreateDirectoryTableStmt *n = makeNode(CreateDirectoryTableStmt);
+                    $4->relpersistence = RELPERSISTENCE_PERMANENT;
+                    n->base.relation = $4;
+                    n->base.tableElts = GetDirectoryTableBuiltinColumns();
+                    n->base.inhRelations = NIL;
+                    n->base.ofTypename = NULL;
+                    n->base.constraints = NIL;
+                    n->base.options = NIL;
+                    n->base.oncommit = ONCOMMIT_NOOP;
+                    /* TODO: support tablespace for data table ? */
+                    n->base.tablespacename = NULL;
+                    n->base.if_not_exists = false;
+                    n->base.distributedBy = (DistributedBy *) $7;
+                    n->base.relKind = RELKIND_DIRECTORY_TABLE;
+                    n->tablespacename = $6;
+
+                    $$ = (Node *) n;
+                }
+            | CREATE DIRECTORY TABLE IF_P NOT EXISTS qualified_name
+            table_access_method_clause OptTableSpace OptDistributedBy
+                {
+                    CreateDirectoryTableStmt *n = makeNode(CreateDirectoryTableStmt);
+                    $7->relpersistence = RELPERSISTENCE_PERMANENT;
+                    n->base.relation = $7;
+                    n->base.tableElts = GetDirectoryTableBuiltinColumns();
+                    n->base.inhRelations = NIL;
+                    n->base.ofTypename = NULL;
+                    n->base.constraints = NIL;
+                    n->base.options = NIL;
+                    n->base.oncommit = ONCOMMIT_NOOP;
+                    /* TODO: support tablespace for data table? */
+                    n->base.tablespacename = NULL;
+                    n->base.if_not_exists = true;
+                    n->base.distributedBy = (DistributedBy *) $10;
+                    n->base.relKind = RELKIND_DIRECTORY_TABLE;
+                    n->tablespacename = $9;
+
+                    $$ = (Node *) n;
+                }
+            ;
 
 /*****************************************************************************
  *
@@ -9093,7 +9266,8 @@ object_type_any_name:
 			| INDEX									{ $$ = OBJECT_INDEX; }
 			| FOREIGN TABLE							{ $$ = OBJECT_FOREIGN_TABLE; }
 			| EXTERNAL TABLE						{ $$ = OBJECT_FOREIGN_TABLE; }
-			| EXTERNAL WEB TABLE					{ $$ = OBJECT_FOREIGN_TABLE; }	
+			| EXTERNAL WEB TABLE					{ $$ = OBJECT_FOREIGN_TABLE; }
+			| DIRECTORY TABLE                       { $$ = OBJECT_DIRECTORY_TABLE; }
 			| COLLATION								{ $$ = OBJECT_COLLATION; }
 			| CONVERSION_P							{ $$ = OBJECT_CONVERSION; }
 			| STATISTICS							{ $$ = OBJECT_STATISTIC_EXT; }
@@ -11605,6 +11779,26 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 					n->missing_ok = true;
 					$$ = (Node *)n;
 				}
+            | ALTER DIRECTORY TABLE relation_expr RENAME TO name
+                {
+                    RenameStmt *n = makeNode(RenameStmt);
+                    n->renameType = OBJECT_DIRECTORY_TABLE;
+                    n->relation = $4;
+                    n->subname = NULL;
+                    n->newname = $7;
+                    n->missing_ok = false;
+                    $$ = (Node *) n;
+                }
+            | ALTER DIRECTORY TABLE IF_P EXISTS relation_expr RENAME TO name
+                {
+                    RenameStmt *n = makeNode(RenameStmt);
+                    n->renameType = OBJECT_DIRECTORY_TABLE;
+                    n->relation = $6;
+                    n->subname = NULL;
+                    n->newname = $9;
+                    n->missing_ok = true;
+                    $$ = (Node *) n;
+                }
 			| ALTER TABLE relation_expr RENAME opt_column name TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
@@ -18742,6 +18936,7 @@ unreserved_keyword:
 			| DEPTH
 			| DETACH
 			| DICTIONARY
+			| DIRECTORY
 			| DISABLE_P
 			| DISCARD
 			| DOCUMENT_P
@@ -19112,6 +19307,7 @@ PartitionIdentKeyword: ABORT_P
 			| DEPTH
 			| DETACH
 			| DICTIONARY
+			| DIRECTORY
 			| DISABLE_P
 			| DOMAIN_P
 			| DOUBLE_P
@@ -19663,6 +19859,7 @@ bare_label_keyword:
 			| DESC
 			| DETACH
 			| DICTIONARY
+			| DIRECTORY
 			| DISABLE_P
 			| DISCARD
 			| DISTINCT

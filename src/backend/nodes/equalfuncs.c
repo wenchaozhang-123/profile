@@ -2145,6 +2145,16 @@ _equalAlterForeignServerStmt(const AlterForeignServerStmt *a, const AlterForeign
 }
 
 static bool
+_equalCreateStorageServerStmt(const CreateStorageServerStmt *a, const CreateStorageServerStmt *b)
+{
+	COMPARE_STRING_FIELD(servername);
+	COMPARE_SCALAR_FIELD(if_not_exists);
+	COMPARE_NODE_FIELD(options);
+
+	return true;
+}
+
+static bool
 _equalCreateUserMappingStmt(const CreateUserMappingStmt *a, const CreateUserMappingStmt *b)
 {
 	COMPARE_NODE_FIELD(user);
@@ -2167,6 +2177,37 @@ _equalAlterUserMappingStmt(const AlterUserMappingStmt *a, const AlterUserMapping
 
 static bool
 _equalDropUserMappingStmt(const DropUserMappingStmt *a, const DropUserMappingStmt *b)
+{
+	COMPARE_NODE_FIELD(user);
+	COMPARE_STRING_FIELD(servername);
+	COMPARE_SCALAR_FIELD(missing_ok);
+
+	return true;
+}
+
+static bool
+_equalCreateStorageUserMappingStmt(const CreateStorageUserMappingStmt *a, const CreateStorageUserMappingStmt *b)
+{
+	COMPARE_NODE_FIELD(user);
+	COMPARE_STRING_FIELD(servername);
+	COMPARE_SCALAR_FIELD(if_not_exists);
+	COMPARE_NODE_FIELD(options);
+
+	return true;
+}
+
+static bool
+_equalAlterStorageUserMappingStmt(const AlterStorageUserMappingStmt *a, const AlterStorageUserMappingStmt *b)
+{
+	COMPARE_NODE_FIELD(user);
+	COMPARE_STRING_FIELD(servername);
+	COMPARE_NODE_FIELD(options);
+
+	return true;
+}
+
+static bool
+_equalDropStorageUserMappingStmt(const DropStorageUserMappingStmt *a, const DropStorageUserMappingStmt *b)
 {
 	COMPARE_NODE_FIELD(user);
 	COMPARE_STRING_FIELD(servername);
@@ -3334,6 +3375,18 @@ _equalPartitionCmd(const PartitionCmd *a, const PartitionCmd *b)
 	return true;
 }
 
+static bool
+_equalCreateDirectoryTableStmt(const CreateDirectoryTableStmt *a, const CreateDirectoryTableStmt *b)
+{
+	if (!_equalCreateStmt(&a->base, &b->base))
+		return false;
+
+	COMPARE_STRING_FIELD(tablespacename);
+	COMPARE_SCALAR_FIELD(relnode);
+
+	return true;
+}
+
 /*
  * Stuff from pg_list.h
  */
@@ -3934,6 +3987,9 @@ equal(const void *a, const void *b)
 		case T_AlterForeignServerStmt:
 			retval = _equalAlterForeignServerStmt(a, b);
 			break;
+		case T_CreateStorageServerStmt:
+			retval = _equalCreateStorageServerStmt(a, b);
+			break;
 		case T_CreateUserMappingStmt:
 			retval = _equalCreateUserMappingStmt(a, b);
 			break;
@@ -3942,6 +3998,15 @@ equal(const void *a, const void *b)
 			break;
 		case T_DropUserMappingStmt:
 			retval = _equalDropUserMappingStmt(a, b);
+			break;
+		case T_CreateStorageUserMappingStmt:
+			retval = _equalCreateStorageUserMappingStmt(a, b);
+			break;
+		case T_AlterStorageUserMappingStmt:
+			retval = _equalAlterStorageUserMappingStmt(a, b);
+			break;
+		case T_DropStorageUserMappingStmt:
+			retval = _equalDropStorageUserMappingStmt(a, b);
 			break;
 		case T_CreateForeignTableStmt:
 			retval = _equalCreateForeignTableStmt(a, b);
@@ -4248,6 +4313,9 @@ equal(const void *a, const void *b)
 			break;
 		case T_DistributionKeyElem:
 			retval = _equalDistributionKeyElem(a, b);
+			break;
+		case T_CreateDirectoryTableStmt:
+			retval = _equalCreateDirectoryTableStmt(a, b);
 			break;
 
 		default:

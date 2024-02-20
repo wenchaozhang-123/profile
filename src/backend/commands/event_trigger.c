@@ -942,6 +942,8 @@ EventTriggerSupportsObjectType(ObjectType obtype)
 		case OBJECT_TABLESPACE:
 		case OBJECT_ROLE:
 		case OBJECT_PROFILE:
+		case OBJECT_STORAGE_SERVER:
+		case OBJECT_STORAGE_USER_MAPPING:
 			/* no support for global objects */
 			return false;
 		case OBJECT_EVENT_TRIGGER:
@@ -958,6 +960,7 @@ EventTriggerSupportsObjectType(ObjectType obtype)
 		case OBJECT_CONVERSION:
 		case OBJECT_DEFACL:
 		case OBJECT_DEFAULT:
+		case OBJECT_DIRECTORY_TABLE:
 		case OBJECT_DOMAIN:
 		case OBJECT_DOMCONSTRAINT:
 		case OBJECT_EXTENSION:
@@ -2115,6 +2118,8 @@ stringify_grant_objtype(ObjectType objtype)
 			return "FOREIGN DATA WRAPPER";
 		case OBJECT_FOREIGN_SERVER:
 			return "FOREIGN SERVER";
+		case OBJECT_STORAGE_SERVER:
+			return "STORAGE SERVER";
 		case OBJECT_FUNCTION:
 			return "FUNCTION";
 		case OBJECT_LANGUAGE:
@@ -2166,11 +2171,13 @@ stringify_grant_objtype(ObjectType objtype)
 		case OBJECT_TSPARSER:
 		case OBJECT_TSTEMPLATE:
 		case OBJECT_USER_MAPPING:
+		case OBJECT_STORAGE_USER_MAPPING:
 		case OBJECT_VIEW:
 		case OBJECT_EXTPROTOCOL:
 		case OBJECT_RESQUEUE:
 		case OBJECT_RESGROUP:
 		case OBJECT_PROFILE:
+		case OBJECT_DIRECTORY_TABLE:
 			elog(ERROR, "unsupported object type: %d", (int) objtype);
 	}
 
@@ -2201,6 +2208,8 @@ stringify_adefprivs_objtype(ObjectType objtype)
 			return "FOREIGN DATA WRAPPERS";
 		case OBJECT_FOREIGN_SERVER:
 			return "FOREIGN SERVERS";
+		case OBJECT_STORAGE_SERVER:
+			return "STORAGE SERVERS";
 		case OBJECT_FUNCTION:
 			return "FUNCTIONS";
 		case OBJECT_LANGUAGE:
@@ -2252,11 +2261,13 @@ stringify_adefprivs_objtype(ObjectType objtype)
 		case OBJECT_TSPARSER:
 		case OBJECT_TSTEMPLATE:
 		case OBJECT_USER_MAPPING:
+		case OBJECT_STORAGE_USER_MAPPING:
 		case OBJECT_VIEW:
 		case OBJECT_EXTPROTOCOL:
 		case OBJECT_RESQUEUE:
 		case OBJECT_RESGROUP:
 		case OBJECT_PROFILE:
+		case OBJECT_DIRECTORY_TABLE:
 			elog(ERROR, "unsupported object type: %d", (int) objtype);
 	}
 

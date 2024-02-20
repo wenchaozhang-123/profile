@@ -270,6 +270,9 @@ restrict_and_check_grant(bool is_grant, AclMode avail_goptions, bool all_privs,
 		case OBJECT_FOREIGN_SERVER:
 			whole_mask = ACL_ALL_RIGHTS_FOREIGN_SERVER;
 			break;
+		case OBJECT_STORAGE_SERVER:
+			whole_mask = ACL_ALL_RIGHTS_STORAGE_SERVER;
+			break;
 		case OBJECT_EVENT_TRIGGER:
 			elog(ERROR, "grantable rights not supported for event triggers");
 			/* not reached, but keep compiler quiet */
@@ -527,6 +530,10 @@ ExecuteGrantStmt(GrantStmt *stmt)
 		case OBJECT_FOREIGN_SERVER:
 			all_privileges = ACL_ALL_RIGHTS_FOREIGN_SERVER;
 			errormsg = gettext_noop("invalid privilege type %s for foreign server");
+			break;
+		case OBJECT_STORAGE_SERVER:
+			all_privileges = ACL_ALL_RIGHTS_STORAGE_SERVER;
+			errormsg = gettext_noop("invalid privilege type %s from storage server");
 			break;
 		case OBJECT_EXTPROTOCOL:
 			all_privileges = ACL_ALL_RIGHTS_EXTPROTOCOL;
@@ -921,6 +928,8 @@ objectsInSchemaToOids(ObjectType objtype, List *nspnames)
 				objs = getRelationsInNamespace(namespaceId, RELKIND_FOREIGN_TABLE);
 				objects = list_concat(objects, objs);
 				objs = getRelationsInNamespace(namespaceId, RELKIND_PARTITIONED_TABLE);
+				objects = list_concat(objects, objs);
+				objs = getRelationsInNamespace(namespaceId, RELKIND_DIRECTORY_TABLE);
 				objects = list_concat(objects, objs);
 				break;
 			case OBJECT_SEQUENCE:
@@ -3691,6 +3700,9 @@ aclcheck_error(AclResult aclerr, ObjectType objtype,
 					case OBJECT_DOMAIN:
 						msg = gettext_noop("permission denied for domain %s");
 						break;
+					case OBJECT_DIRECTORY_TABLE:
+						msg = gettext_noop("permission denied for directory table %s");
+						break;
 					case OBJECT_EVENT_TRIGGER:
 						msg = gettext_noop("permission denied for event trigger %s");
 						break;
@@ -3796,6 +3808,8 @@ aclcheck_error(AclResult aclerr, ObjectType objtype,
 					case OBJECT_TSTEMPLATE:
 					case OBJECT_USER_MAPPING:
 					case OBJECT_PROFILE:
+					case OBJECT_STORAGE_SERVER:
+					case OBJECT_STORAGE_USER_MAPPING:
 						elog(ERROR, "unsupported object type %d", objtype);
 				}
 
@@ -3824,6 +3838,9 @@ aclcheck_error(AclResult aclerr, ObjectType objtype,
 						break;
 					case OBJECT_DOMAIN:
 						msg = gettext_noop("must be owner of domain %s");
+						break;
+					case OBJECT_DIRECTORY_TABLE:
+						msg = gettext_noop("must be owner of directory table %s");
 						break;
 					case OBJECT_EVENT_TRIGGER:
 						msg = gettext_noop("must be owner of event trigger %s");
@@ -3938,6 +3955,8 @@ aclcheck_error(AclResult aclerr, ObjectType objtype,
 					case OBJECT_TSTEMPLATE:
 					case OBJECT_USER_MAPPING:
 					case OBJECT_PROFILE:
+					case OBJECT_STORAGE_SERVER:
+					case OBJECT_STORAGE_USER_MAPPING:
 						elog(ERROR, "unsupported object type %d", objtype);
 				}
 
@@ -6679,6 +6698,7 @@ CopyRelationAcls(Oid srcId, Oid destId)
 
 	if (pg_class_tuple->relkind != RELKIND_RELATION &&
 		pg_class_tuple->relkind != RELKIND_PARTITIONED_TABLE &&
+		pg_class_tuple->relkind != RELKIND_DIRECTORY_TABLE &&
 		pg_class_tuple->relkind != RELKIND_FOREIGN_TABLE)
 		elog(ERROR, "unexpected relkind %c",  pg_class_tuple->relkind);
 

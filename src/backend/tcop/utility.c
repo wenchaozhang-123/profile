@@ -37,6 +37,7 @@
 #include "commands/createas.h"
 #include "commands/dbcommands.h"
 #include "commands/defrem.h"
+#include "commands/dirtablecmds.h"
 #include "commands/discard.h"
 #include "commands/event_trigger.h"
 #include "commands/explain.h"
@@ -181,6 +182,7 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_AlterTableStmt:
 		case T_AlterTypeStmt:
 		case T_AlterUserMappingStmt:
+		case T_AlterStorageUserMappingStmt:
 		case T_CommentStmt:
 		case T_CompositeTypeStmt:
 		case T_CreateAmStmt:
@@ -210,7 +212,9 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_CreateTableSpaceStmt:
 		case T_CreateTransformStmt:
 		case T_CreateTrigStmt:
+		case T_CreateStorageServerStmt:
 		case T_CreateUserMappingStmt:
+		case T_CreateStorageUserMappingStmt:
 		case T_CreatedbStmt:
 		case T_DefineStmt:
 		case T_DropOwnedStmt:
@@ -219,6 +223,7 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_DropSubscriptionStmt:
 		case T_DropTableSpaceStmt:
 		case T_DropUserMappingStmt:
+		case T_DropStorageUserMappingStmt:
 		case T_DropdbStmt:
 		case T_GrantRoleStmt:
 		case T_GrantStmt:
@@ -236,6 +241,7 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_AlterProfileStmt:
 		case T_AlterQueueStmt:
 		case T_AlterResourceGroupStmt:
+		case T_CreateDirectoryTableStmt:
 		case T_CreateProfileStmt:
 		case T_CreateQueueStmt:
 		case T_CreateResourceGroupStmt:
@@ -1358,6 +1364,7 @@ ProcessUtilitySlow(ParseState *pstate,
 
 			case T_CreateStmt:
 			case T_CreateForeignTableStmt:
+			case T_CreateDirectoryTableStmt:
 				{
 					List	   *stmts;
 					RangeVar   *table_rv = NULL;
@@ -1540,6 +1547,27 @@ ProcessUtilitySlow(ParseState *pstate,
 							CreateForeignTable(cstmt,
 											   address.objectId,
 											   false /* skip_permission_checks */);
+							EventTriggerCollectSimpleCommand(address,
+															 secondaryObject,
+															 stmt);
+						}
+						else if (IsA(stmt, CreateDirectoryTableStmt))
+						{
+							CreateDirectoryTableStmt *cstmt = (CreateDirectoryTableStmt *) stmt;
+
+							/* Remember transformed RangeVar for LIKE */
+							table_rv = cstmt->base.relation;
+
+							/* Create the table itself */
+							address = DefineRelation(&cstmt->base,
+													 RELKIND_DIRECTORY_TABLE,
+													 InvalidOid, NULL,
+													 queryString,
+													 true,
+													 true,
+													 cstmt->base.intoPolicy);
+							/* Create directory table tuple */
+							CreateDirectoryTable(cstmt, address.objectId);
 							EventTriggerCollectSimpleCommand(address,
 															 secondaryObject,
 															 stmt);
@@ -2015,6 +2043,9 @@ ProcessUtilitySlow(ParseState *pstate,
 				address = AlterForeignServer((AlterForeignServerStmt *) parsetree);
 				break;
 
+			case T_CreateStorageServerStmt:
+				break;
+
 			case T_CreateUserMappingStmt:
 				address = CreateUserMapping((CreateUserMappingStmt *) parsetree);
 				break;
@@ -2027,6 +2058,15 @@ ProcessUtilitySlow(ParseState *pstate,
 				RemoveUserMapping((DropUserMappingStmt *) parsetree);
 				/* no commands stashed for DROP */
 				commandCollected = true;
+				break;
+
+			case T_CreateStorageUserMappingStmt:
+				break;
+
+			case T_AlterStorageUserMappingStmt:
+				break;
+
+			case T_DropStorageUserMappingStmt:
 				break;
 
 			case T_ImportForeignSchemaStmt:
@@ -2456,6 +2496,7 @@ ExecDropStmt(DropStmt *stmt, bool isTopLevel)
 		case OBJECT_VIEW:
 		case OBJECT_MATVIEW:
 		case OBJECT_FOREIGN_TABLE:
+		case OBJECT_DIRECTORY_TABLE:
 			RemoveRelations(stmt);
 			break;
 		default:
@@ -3026,6 +3067,10 @@ CreateCommandTag(Node *parsetree)
 			tag = CMDTAG_ALTER_SERVER;
 			break;
 
+		case T_CreateStorageServerStmt:
+			tag = CMDTAG_CREATE_STORAGE_SERVER;
+			break;
+
 		case T_CreateUserMappingStmt:
 			tag = CMDTAG_CREATE_USER_MAPPING;
 			break;
@@ -3038,12 +3083,28 @@ CreateCommandTag(Node *parsetree)
 			tag = CMDTAG_DROP_USER_MAPPING;
 			break;
 
+		case T_CreateStorageUserMappingStmt:
+			tag = CMDTAG_CREATE_STORAGE_USER_MAPPING;
+			break;
+
+		case T_AlterStorageUserMappingStmt:
+			tag = CMDTAG_ALTER_STORAGE_USER_MAPPING;
+			break;
+
+		case T_DropStorageUserMappingStmt:
+			tag = CMDTAG_DROP_STORAGE_USER_MAPPING;
+			break;
+
 		case T_CreateForeignTableStmt:
 			tag = CMDTAG_CREATE_FOREIGN_TABLE;
 			break;
 
 		case T_ImportForeignSchemaStmt:
 			tag = CMDTAG_IMPORT_FOREIGN_SCHEMA;
+			break;
+
+		case T_CreateDirectoryTableStmt:
+			tag = CMDTAG_CREATE_DIRECTORY_TABLE;
 			break;
 
 		case T_DropStmt:
@@ -3139,6 +3200,9 @@ CreateCommandTag(Node *parsetree)
 				case OBJECT_FOREIGN_SERVER:
 					tag = CMDTAG_DROP_SERVER;
 					break;
+				case OBJECT_STORAGE_SERVER:
+					tag = CMDTAG_DROP_STORAGE_SERVER;
+					break;
 				case OBJECT_OPCLASS:
 					tag = CMDTAG_DROP_OPERATOR_CLASS;
 					break;
@@ -3159,6 +3223,9 @@ CreateCommandTag(Node *parsetree)
 					break;
 				case OBJECT_STATISTIC_EXT:
 					tag = CMDTAG_DROP_STATISTICS;
+					break;
+				case OBJECT_DIRECTORY_TABLE:
+					tag = CMDTAG_DROP_DIRECTORY_TABLE;
 					break;
 				default:
 					tag = CMDTAG_UNKNOWN;
@@ -3891,10 +3958,15 @@ GetCommandLogLevel(Node *parsetree)
 		case T_AlterFdwStmt:
 		case T_CreateForeignServerStmt:
 		case T_AlterForeignServerStmt:
+		case T_CreateStorageServerStmt:
 		case T_CreateUserMappingStmt:
 		case T_AlterUserMappingStmt:
 		case T_DropUserMappingStmt:
+		case T_CreateStorageUserMappingStmt:
+		case T_AlterStorageUserMappingStmt:
+		case T_DropStorageUserMappingStmt:
 		case T_ImportForeignSchemaStmt:
+		case T_CreateDirectoryTableStmt:
 			lev = LOGSTMT_DDL;
 			break;
 

@@ -2088,6 +2088,13 @@ CheckValidResultRel(ResultRelInfo *resultRelInfo, CmdType operation)
 						 errmsg("cannot change AO visibility map relation \"%s\"",
 								RelationGetRelationName(resultRel))));
 			break;
+		case RELKIND_DIRECTORY_TABLE:
+			if (operation != CMD_INSERT && operation != CMD_DELETE)
+				ereport(ERROR,
+						(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+						 errmsg("directory table \"%s\" does not allow updates",
+							    RelationGetRelationName(resultRel))));
+			break;
 
 		default:
 			ereport(ERROR,
@@ -2152,6 +2159,14 @@ CheckValidRowMarkRel(Relation rel, RowMarkType markType)
 						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 						 errmsg("cannot lock rows in foreign table \"%s\"",
 								RelationGetRelationName(rel))));
+			break;
+		case RELKIND_DIRECTORY_TABLE:
+			/* Allow referencing a directory table, but not actual locking clauses */
+			if (markType != ROW_MARK_REFERENCE)
+				ereport(ERROR,
+						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+						 errmsg("cannot lock rows in directory table \"%s\"",
+			  							RelationGetRelationName(rel))));
 			break;
 		default:
 			ereport(ERROR,

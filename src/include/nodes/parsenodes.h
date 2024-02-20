@@ -1921,6 +1921,7 @@ typedef enum ObjectType
 	OBJECT_EXTENSION,
 	OBJECT_FDW,
 	OBJECT_FOREIGN_SERVER,
+	OBJECT_STORAGE_SERVER,
 	OBJECT_FOREIGN_TABLE,
 	OBJECT_FUNCTION,
 	OBJECT_INDEX,
@@ -1954,9 +1955,11 @@ typedef enum ObjectType
 	OBJECT_TSTEMPLATE,
 	OBJECT_TYPE,
 	OBJECT_USER_MAPPING,
+	OBJECT_STORAGE_USER_MAPPING,
 	OBJECT_VIEW,
 	OBJECT_RESQUEUE,
-	OBJECT_RESGROUP
+	OBJECT_RESGROUP,
+	OBJECT_DIRECTORY_TABLE
 } ObjectType;
 
 /* Event triggers and extended statistics are only stored on the QD node.*/
@@ -2861,6 +2864,18 @@ typedef struct AlterForeignServerStmt
 } AlterForeignServerStmt;
 
 /* ----------------------
+ *		Create/Alter STORAGE SERVER Statements
+ * ----------------------
+ */
+typedef struct CreateStorageServerStmt
+{
+	NodeTag		type;
+	char 		*servername;	/* server name */
+	bool		if_not_exists;	/* just do nothing if it already exists? */
+	List		*options;		/* generic options to server */
+} CreateStorageServerStmt;
+
+/* ----------------------
  *		Create FOREIGN TABLE Statement
  * ----------------------
  */
@@ -2902,6 +2917,36 @@ typedef struct DropUserMappingStmt
 	char	   *servername;		/* server name */
 	bool		missing_ok;		/* ignore missing mappings */
 } DropUserMappingStmt;
+
+/* ----------------------
+ *		Create/Drop STORAGE USER MAPPING Statements
+ * ----------------------
+ */
+
+typedef struct CreateStorageUserMappingStmt
+{
+	NodeTag		type;
+	RoleSpec	*user;			/* user role */
+	char 		*servername;	/* server name */
+	bool		if_not_exists;	/* just do nothing if it already exists? */
+	List		*options;		/* generic options to server */
+} CreateStorageUserMappingStmt;
+
+typedef struct AlterStorageUserMappingStmt
+{
+	NodeTag		type;
+	RoleSpec	*user;			/* user role */
+	char 		*servername;	/* server name */
+	List 		*options;		/* generic options to server */
+} AlterStorageUserMappingStmt;
+
+typedef struct DropStorageUserMappingStmt
+{
+	NodeTag		type;
+	RoleSpec	*user;			/* user role */
+	char 		*servername;	/* server name */
+	bool		missing_ok;		/* ignore missing mappings */
+} DropStorageUserMappingStmt;
 
 /* ----------------------
  *		Import Foreign Schema Statement
@@ -3278,6 +3323,18 @@ typedef struct AlterOpFamilyStmt
 	bool		isDrop;			/* ADD or DROP the items? */
 	List	   *items;			/* List of CreateOpClassItem nodes */
 } AlterOpFamilyStmt;
+
+/* ----------------------
+ *		Create/Alter Directory Table Statements
+ * ----------------------
+ */
+typedef struct CreateDirectoryTableStmt
+{
+	CreateStmt	base;
+	char	   *tablespacename;
+	RelFileNodeId relnode;
+} CreateDirectoryTableStmt;
+
 
 /* ----------------------
  *		DROP Statement, applies to:

@@ -899,6 +899,18 @@ static const struct object_type_map
 	/* OCLASS_PROFILE */
 	{
 		"profile", OBJECT_PROFILE
+	},
+	/* OCLASS_DIRECTORY_TABLE */
+	{
+		"directory table", OBJECT_DIRECTORY_TABLE
+	},
+	/* OCLASS_STORAGE_SERVER */
+	{
+		"storage server", OBJECT_STORAGE_SERVER
+	},
+	/* OCLASS_STORAGE_USER_MAPPING */
+	{
+		"storage user mapping", OBJECT_STORAGE_USER_MAPPING
 	}
 };
 
@@ -1014,6 +1026,7 @@ get_object_address(ObjectType objtype, Node *object,
 			case OBJECT_VIEW:
 			case OBJECT_MATVIEW:
 			case OBJECT_FOREIGN_TABLE:
+			case OBJECT_DIRECTORY_TABLE:
 				address =
 					get_relation_by_qualified_name(objtype, castNode(List, object),
 												   &relation, lockmode,
@@ -1073,6 +1086,8 @@ get_object_address(ObjectType objtype, Node *object,
 			case OBJECT_RESQUEUE:
 			case OBJECT_RESGROUP:
 			case OBJECT_PROFILE:
+			case OBJECT_STORAGE_SERVER:
+			case OBJECT_STORAGE_USER_MAPPING:
 				address = get_object_address_unqualified(objtype,
 														 (Value *) object, missing_ok);
 				break;
@@ -1451,6 +1466,13 @@ get_relation_by_qualified_name(ObjectType objtype, List *object,
 				ereport(ERROR,
 						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
 						 errmsg("\"%s\" is not a table",
+								RelationGetRelationName(relation))));
+			break;
+		case OBJECT_DIRECTORY_TABLE:
+			if (relation->rd_rel->relkind != RELKIND_DIRECTORY_TABLE)
+				ereport(ERROR,
+						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+						 errmsg("\"%s\" is not a directory table",
 								RelationGetRelationName(relation))));
 			break;
 		case OBJECT_VIEW:
@@ -2289,6 +2311,7 @@ pg_get_object_address(PG_FUNCTION_ARGS)
 		case OBJECT_DOMCONSTRAINT:
 		case OBJECT_CAST:
 		case OBJECT_USER_MAPPING:
+		case OBJECT_STORAGE_USER_MAPPING:
 		case OBJECT_PUBLICATION_REL:
 		case OBJECT_DEFACL:
 		case OBJECT_TRANSFORM:
@@ -2350,6 +2373,7 @@ pg_get_object_address(PG_FUNCTION_ARGS)
 		case OBJECT_TABCONSTRAINT:
 		case OBJECT_OPCLASS:
 		case OBJECT_OPFAMILY:
+		case OBJECT_DIRECTORY_TABLE:
 			objnode = (Node *) name;
 			break;
 		case OBJECT_ACCESS_METHOD:
@@ -2358,6 +2382,7 @@ pg_get_object_address(PG_FUNCTION_ARGS)
 		case OBJECT_EXTENSION:
 		case OBJECT_FDW:
 		case OBJECT_FOREIGN_SERVER:
+		case OBJECT_STORAGE_SERVER:
 		case OBJECT_LANGUAGE:
 		case OBJECT_PUBLICATION:
 		case OBJECT_ROLE:
@@ -2387,6 +2412,9 @@ pg_get_object_address(PG_FUNCTION_ARGS)
 			objnode = (Node *) list_make2(name, linitial(args));
 			break;
 		case OBJECT_USER_MAPPING:
+			objnode = (Node *) list_make2(linitial(name), linitial(args));
+			break;
+		case OBJECT_STORAGE_USER_MAPPING:
 			objnode = (Node *) list_make2(linitial(name), linitial(args));
 			break;
 		case OBJECT_DEFACL:
@@ -2458,6 +2486,7 @@ check_object_ownership(Oid roleid, ObjectType objtype, ObjectAddress address,
 		case OBJECT_INDEX:
 		case OBJECT_SEQUENCE:
 		case OBJECT_TABLE:
+		case OBJECT_DIRECTORY_TABLE:
 		case OBJECT_VIEW:
 		case OBJECT_MATVIEW:
 		case OBJECT_FOREIGN_TABLE:
@@ -4150,6 +4179,10 @@ getRelationDescription(StringInfo buffer, Oid relid, bool missing_ok)
 			appendStringInfo(buffer, _("table %s"),
 							 relname);
 			break;
+		case RELKIND_DIRECTORY_TABLE:
+			appendStringInfo(buffer, _("directory table %s"),
+							 relname);
+			break;
 		case RELKIND_INDEX:
 		case RELKIND_PARTITIONED_INDEX:
 			appendStringInfo(buffer, _("index %s"),
@@ -4708,6 +4741,9 @@ getRelationTypeDescription(StringInfo buffer, Oid relid, int32 objectSubId,
 		case RELKIND_RELATION:
 		case RELKIND_PARTITIONED_TABLE:
 			appendStringInfoString(buffer, "table");
+			break;
+		case RELKIND_DIRECTORY_TABLE:
+			appendStringInfoString(buffer, "directory table");
 			break;
 		case RELKIND_INDEX:
 		case RELKIND_PARTITIONED_INDEX:
@@ -6200,6 +6236,8 @@ get_relkind_objtype(char relkind)
 			return OBJECT_FOREIGN_TABLE;
 		case RELKIND_TOASTVALUE:
 			return OBJECT_TABLE;
+		case RELKIND_DIRECTORY_TABLE:
+			return OBJECT_DIRECTORY_TABLE;
 		default:
 			/* Per above, don't raise an error */
 			return OBJECT_TABLE;

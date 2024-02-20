@@ -33,6 +33,7 @@ OBJS = \
 	createas.o \
 	dbcommands.o \
 	define.o \
+	dirtablecmds.o \
 	discard.o \
 	dropcmds.o \
 	event_trigger.o \
