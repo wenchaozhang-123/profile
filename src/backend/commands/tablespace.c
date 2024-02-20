@@ -83,6 +83,7 @@
 #include "commands/tablespace.h"
 #include "common/file_perm.h"
 #include "miscadmin.h"
+#include "parser/parse_func.h"
 #include "postmaster/bgwriter.h"
 #include "storage/bufmgr.h"
 #include "storage/fd.h"
@@ -269,6 +270,7 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 	Oid			ownerId;
 	Datum		newOptions;
 	List       *nonContentOptions = NIL;
+	char       *fileHandler = NULL;
 
 	/* Must be super user */
 	if (!superuser())
@@ -315,6 +317,10 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 				}
 				else if (contentId == GpIdentity.segindex)
 					location = pstrdup(strVal(defel->arg));
+			}
+			else if(strcmp(defel->defname, "handler") == 0)
+			{
+				fileHandler = pstrdup(strVal(defel->arg));
 			}
 			else
 				nonContentOptions = lappend(nonContentOptions, defel);
@@ -419,6 +425,30 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 	values[Anum_pg_tablespace_spcowner - 1] =
 		ObjectIdGetDatum(ownerId);
 	nulls[Anum_pg_tablespace_spcacl - 1] = true;
+
+	if (fileHandler)
+	{
+		List	*fileHandler_list;
+		char	*tmpFileHandler = NULL;
+
+		tmpFileHandler = pstrdup(fileHandler);
+
+		if (!SplitIdentifierString(tmpFileHandler, ',', &fileHandler_list))
+			ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("invalid list syntax for \"spcfilehandler\" option")));
+
+		if (list_length(fileHandler_list) != 2)
+			ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("invalid syntax for \"handler\" option")));
+
+		values[Anum_pg_tablespace_spcfilehandler - 1] = CStringGetTextDatum(fileHandler);
+	}
+	else
+	{
+		nulls[Anum_pg_tablespace_spcfilehandler - 1] = true;
+	}
 
 	/* Generate new proposed spcoptions (text array) */
 	newOptions = transformRelOptions((Datum) 0,
