@@ -27,10 +27,11 @@ typedef struct DirTableColumnDesc
 } DirTableColumnDesc;
 
 static const DirTableColumnDesc dirTableColumns[] = {
-	{"scoped_file_url", "text"},
 	{"relative_path", "text"},
 	{"size", "int8"},
-	{"last_modified", "timestamptz"}
+	{"last_modified", "timestamptz"},
+	{"md5", "text"},
+	{"tags", "text"}
 };
 
 /*

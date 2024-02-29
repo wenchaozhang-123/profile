@@ -197,6 +197,26 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	DistributedBy *likeDistributedBy = NULL;
 	bool		bQuiet = false;		/* shut up transformDistributedBy messages */
 
+	if (stmt->relKind == RELKIND_DIRECTORY_TABLE)
+	{
+		Oid			opclass = InvalidOid;
+		DistributedBy *distributedBy = makeNode(DistributedBy);
+		distributedBy->ptype = POLICYTYPE_PARTITIONED;
+		distributedBy->numsegments = -1;
+		DistributionKeyElem *elem = makeNode(DistributionKeyElem);
+		elem->name = "relative_path";
+		if (gp_use_legacy_hashops)
+			opclass = get_legacy_cdbhash_opclass_for_base_type(25);
+
+		if (!OidIsValid(opclass))
+			opclass = cdb_default_distribution_opclass_for_type(25);
+		elem->opclass = lappend(elem->opclass, &opclass);
+
+		elem->location = 0;
+		distributedBy->keyCols = lappend(distributedBy->keyCols, elem);
+		stmt->distributedBy = distributedBy;
+	}
+
  	/*
 	 * We don't normally care much about the memory consumption of parsing,
 	 * because any memory leaked is leaked into MessageContext which is
