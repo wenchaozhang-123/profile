@@ -14,6 +14,7 @@
 #include "postgres.h"
 
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "catalog/pg_tablespace_d.h"
@@ -42,17 +43,18 @@ typedef struct LocalFile
 	off_t offset;
 } LocalFile;
 
-static UFile *localFileOpen(RelFileNode *relFileNode, const char *fileName,
+static UFile *localFileOpen(Oid spcId, const char *fileName,
 							int fileFlags, char *errorMessage, int errorMessageSize);
 static void localFileClose(UFile *file);
 static int	localFileRead(UFile *file, char *buffer, int amount);
 static int	localFileWrite(UFile *file, char *buffer, int amount);
 static off_t localFileSize(UFile *file);
 static void localFileUnlink(const char *fileName);
+static bool localFileExists(const char *fileName);
 static const char *localFileName(UFile *file);
 static const char *localGetLastError(void);
 
-static char *formatLocalFileName(RelFileNode *relFileNode, const char *fileName);
+//static char *formatLocalFileName(RelFileNode *relFileNode, const char *fileName);
 
 static char localFileErrorStr[UFILE_ERROR_SIZE];
 
@@ -69,7 +71,7 @@ static FileAm localFileAm = {
 //static FileAm *currentFileAm = &localFileAm;
 
 static UFile *
-UFileOpenInternal(RelFileNode *relFileNode,
+UFileOpenInternal(Oid spcId,
 				  bool isNormalfile,
 				  const char *fileName,
 				  int fileFlags,
@@ -87,7 +89,7 @@ UFileOpenInternal(RelFileNode *relFileNode,
 //							  errorMessage,
 //							  errorMessageSize);
 
-	return localFileOpen(relFileNode,
+	return localFileOpen(spcId,
 						 fileName,
 						 fileFlags,
 						 errorMessage,
@@ -95,13 +97,13 @@ UFileOpenInternal(RelFileNode *relFileNode,
 }
 
 UFile *
-UFileOpen(RelFileNode *relFileNode,
+UFileOpen(Oid spcId,
 		  const char *fileName,
 		  int fileFlags,
 		  char *errorMessage,
 		  int errorMessageSize)
 {
-	return UFileOpenInternal(relFileNode,
+	return UFileOpenInternal(spcId,
 							 true,
 							 fileName,
 							 fileFlags,
@@ -110,19 +112,20 @@ UFileOpen(RelFileNode *relFileNode,
 }
 
 static UFile *
-localFileOpen(RelFileNode *relFileNode,
+localFileOpen(Oid spcId,
 			  const char *fileName,
 			  int fileFlags,
 			  char *errorMessage,
 			  int errorMessageSize)
 {
-	char *filePath;
+	//char *filePath;
 	LocalFile *result;
 	File file;
 
-	filePath = formatLocalFileName(relFileNode, fileName);
+	//filePath = formatLocalFileName(relFileNode, fileName);
 
-	file = PathNameOpenFile(filePath, fileFlags);
+	//file = PathNameOpenFile(filePath, fileFlags);
+	file = PathNameOpenFile(fileName, fileFlags);
 	if (file < 0)
 	{
 		snprintf(errorMessage, errorMessageSize, "%s", strerror(errno));
@@ -134,7 +137,7 @@ localFileOpen(RelFileNode *relFileNode,
 	result->file = file;
 	result->offset = 0;
 
-	pfree(filePath);
+	//pfree(filePath);
 
 	return (UFile *) result;
 }
@@ -219,6 +222,24 @@ localFileUnlink(const char *fileName)
 	}
 }
 
+static bool
+localFileExists(const char *fileName)
+{
+	struct stat fileStats;
+
+	if (stat(fileName, &fileStats) != 0)
+	{
+		if (errno == ENOENT)
+			return false;
+
+		ereport(ERROR,
+					(errcode_for_file_access(),
+				 	 errmsg("unable to stat file \"%s\": %m", fileName)));
+	}
+
+	return true;
+}
+
 static const char *
 localFileName(UFile *file)
 {
@@ -233,16 +254,16 @@ localGetLastError(void)
 	return localFileErrorStr;
 }
 
-static char *
-formatLocalFileName(RelFileNode *relFileNode, const char *fileName)
-{
-	if (relFileNode->spcNode == DEFAULTTABLESPACE_OID)
-		return psprintf("base/%u/%s", relFileNode->dbNode, fileName);
-	else
-		return psprintf("pg_tblspc/%u/%s/%u/%s",
-						relFileNode->spcNode, GP_TABLESPACE_VERSION_DIRECTORY,
-		relFileNode->dbNode, fileName);
-}
+//static char *
+//formatLocalFileName(RelFileNode *relFileNode, const char *fileName)
+//{
+//	if (relFileNode->spcNode == DEFAULTTABLESPACE_OID)
+//		return psprintf("base/%u/%s", relFileNode->dbNode, fileName);
+//	else
+//		return psprintf("pg_tblspc/%u/%s/%u/%s",
+//						relFileNode->spcNode, GP_TABLESPACE_VERSION_DIRECTORY,
+//		relFileNode->dbNode, fileName);
+//}
 
 void
 UFileClose(UFile *file)
@@ -288,6 +309,24 @@ void
 UFileUnlink(Oid spcId, const char *fileName)
 {
 	return UFileUnlinkInternal(spcId, true, fileName);
+}
+
+bool
+UFileExists(Oid spcId, const char *fileName)
+{
+//	bool isDfsTableSpace;
+//
+//	isDfsTableSpace = IsDfsTablespaceById(spcId);
+//	if (isDfsTableSpace)
+//	{
+//		const char *server = GetDfsTablespaceServer(spcId);
+//		const char *tableSpacePath = GetDfsTablespacePath(spcId);
+//		gopherFS connection = UfsGetConnection(server, tableSpacePath);
+//
+//		return remoteFileExists(connection, fileName);
+//	}
+
+	return localFileExists(fileName);
 }
 
 const char *

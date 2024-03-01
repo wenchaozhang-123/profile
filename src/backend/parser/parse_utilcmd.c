@@ -199,22 +199,37 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 
 	if (stmt->relKind == RELKIND_DIRECTORY_TABLE)
 	{
-		Oid			opclass = InvalidOid;
+		Oid			opclassoid = InvalidOid;
+		HeapTuple	ht_opc;
+		Form_pg_opclass opcrec;
+		char	   *opcname;
+		char	   *nspname;
+
 		DistributedBy *distributedBy = makeNode(DistributedBy);
 		distributedBy->ptype = POLICYTYPE_PARTITIONED;
 		distributedBy->numsegments = -1;
 		DistributionKeyElem *elem = makeNode(DistributionKeyElem);
+		//char	   *attname = pstrdup(NameStr(TupleDescAttr(tupdesc, attno - 1)->attname));
 		elem->name = "relative_path";
 		if (gp_use_legacy_hashops)
-			opclass = get_legacy_cdbhash_opclass_for_base_type(25);
+			opclassoid = get_legacy_cdbhash_opclass_for_base_type(25);
 
-		if (!OidIsValid(opclass))
-			opclass = cdb_default_distribution_opclass_for_type(25);
-		elem->opclass = lappend(elem->opclass, &opclass);
+		if (!OidIsValid(opclassoid))
+			opclassoid = cdb_default_distribution_opclass_for_type(25);
 
-		elem->location = 0;
+		ht_opc = SearchSysCache1(CLAOID, ObjectIdGetDatum(opclassoid));
+		if (!HeapTupleIsValid(ht_opc))
+			elog(ERROR, "cache lookup failed for opclass %u", opclassoid);
+		opcrec = (Form_pg_opclass) GETSTRUCT(ht_opc);
+		nspname = get_namespace_name(opcrec->opcnamespace);
+		opcname = pstrdup(NameStr(opcrec->opcname));
+		elem->opclass = list_make2(makeString(nspname), makeString(opcname));
+
+		elem->location = -1;
 		distributedBy->keyCols = lappend(distributedBy->keyCols, elem);
 		stmt->distributedBy = distributedBy;
+
+		ReleaseSysCache(ht_opc);
 	}
 
  	/*

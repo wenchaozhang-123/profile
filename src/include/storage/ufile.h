@@ -20,7 +20,7 @@ typedef struct UFile
 	struct FileAm *methods;
 } UFile;
 
-extern UFile *UFileOpen(RelFileNode *relFileNode,
+extern UFile *UFileOpen(Oid spcId,
 						const char *fileName,
 						int fileFlags,
 						char *errorMessage,

@@ -819,6 +819,7 @@ _readCopyStmt(void)
 	READ_BOOL_FIELD(is_from);
 	READ_BOOL_FIELD(is_program);
 	READ_STRING_FIELD(filename);
+	READ_STRING_FIELD(dirfilename);
 	READ_NODE_FIELD(options);
 	READ_NODE_FIELD(sreh);
 

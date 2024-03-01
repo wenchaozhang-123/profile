@@ -411,7 +411,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 %type <str>		copy_file_name
 				access_method_clause attr_name
 				table_access_method_clause name cursor_name file_name
-				opt_index_name cluster_index_specification
+				opt_index_name cluster_index_specification opt_file_name
 
 %type <list>	func_name handler_name qual_Op qual_all_Op subquery_Op
 				opt_class opt_inline_handler opt_validator validator_clause
@@ -4496,7 +4496,7 @@ ClosePortalStmt:
  *****************************************************************************/
 
 CopyStmt:	COPY opt_binary qualified_name opt_column_list
-			copy_from opt_program copy_file_name copy_delimiter opt_with
+			copy_from opt_program copy_file_name opt_file_name copy_delimiter opt_with
 			copy_options where_clause OptSingleRowErrorHandling
 				{
 					CopyStmt *n = makeNode(CopyStmt);
@@ -4506,8 +4506,9 @@ CopyStmt:	COPY opt_binary qualified_name opt_column_list
 					n->is_from = $5;
 					n->is_program = $6;
 					n->filename = $7;
-					n->whereClause = $11;
-					n->sreh = $12;
+					n->dirfilename = $8;
+					n->whereClause = $12;
+					n->sreh = $13;
 
 					if (n->is_program && n->filename == NULL)
 						ereport(ERROR,
@@ -4525,10 +4526,10 @@ CopyStmt:	COPY opt_binary qualified_name opt_column_list
 					/* Concatenate user-supplied flags */
 					if ($2)
 						n->options = lappend(n->options, $2);
-					if ($8)
-						n->options = lappend(n->options, $8);
-					if ($10)
-						n->options = list_concat(n->options, $10);
+					if ($9)
+						n->options = lappend(n->options, $9);
+					if ($11)
+						n->options = list_concat(n->options, $11);
 					$$ = (Node *)n;
 				}
 			| COPY '(' PreparableStmt ')' TO opt_program copy_file_name opt_with copy_options
@@ -4581,6 +4582,11 @@ copy_file_name:
 			| STDIN									{ $$ = NULL; }
 			| STDOUT								{ $$ = NULL; }
 		;
+
+opt_file_name:
+            Sconst                                  { $$ = $1; }
+            | /* EMPTY */                           { $$ = NULL; }
+        ;
 
 copy_options: copy_opt_list							{ $$ = $1; }
 			| '(' copy_generic_opt_list ')'			{ $$ = $2; }
