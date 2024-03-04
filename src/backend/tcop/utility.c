@@ -55,6 +55,7 @@
 #include "commands/schemacmds.h"
 #include "commands/seclabel.h"
 #include "commands/sequence.h"
+#include "commands/storagecmds.h"
 #include "commands/subscriptioncmds.h"
 #include "commands/tablecmds.h"
 #include "commands/tablespace.h"
@@ -2044,6 +2045,7 @@ ProcessUtilitySlow(ParseState *pstate,
 				break;
 
 			case T_CreateStorageServerStmt:
+				address = CreateStorageServer((CreateStorageServerStmt *) parsetree);
 				break;
 
 			case T_CreateUserMappingStmt:

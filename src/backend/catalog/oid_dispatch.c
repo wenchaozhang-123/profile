@@ -81,6 +81,7 @@
 
 #include "catalog/catalog.h"
 #include "catalog/indexing.h"
+#include "catalog/gp_storage_server.h"
 #include "catalog/pg_am.h"
 #include "catalog/pg_amop.h"
 #include "catalog/pg_amproc.h"
@@ -770,6 +771,23 @@ GetNewOidForForeignServer(Relation relation, Oid indexId, AttrNumber oidcolumn,
 	Assert(RelationGetRelid(relation) == ForeignServerRelationId);
 	Assert(indexId == ForeignServerOidIndexId);
 	Assert(oidcolumn == Anum_pg_foreign_server_oid);
+
+	memset(&key, 0, sizeof(OidAssignment));
+	key.type = T_OidAssignment;
+	key.objname = srvname;
+	return GetNewOrPreassignedOid(relation, indexId, oidcolumn, &key);
+
+}
+
+Oid
+GetNewOidForStorageServer(Relation relation, Oid indexId, AttrNumber oidcolumn,
+						  char *srvname)
+{
+	OidAssignment key;
+
+	Assert(RelationGetRelid(relation) == StorageServerRelationId);
+	Assert(indexId == StorageServerOidIndexId);
+	Assert(oidcolumn == Anum_gp_storage_server_oid);
 
 	memset(&key, 0, sizeof(OidAssignment));
 	key.type = T_OidAssignment;

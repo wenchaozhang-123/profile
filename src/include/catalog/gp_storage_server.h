@@ -27,8 +27,6 @@ CATALOG(gp_storage_server,6015,StorageServerRelationId) BKI_SHARED_RELATION
 	Oid			srvowner BKI_LOOKUP(pg_authid); /* server owner */
 
 #ifdef CATALOG_VARLEN			/* variable-length fields start here */
-	text		srvtype;
-	text		srvversion;
 	aclitem		srvacl[1];		/* access permissions */
 	text		srvoptions[1];	/* FDW-specific options */
 #endif

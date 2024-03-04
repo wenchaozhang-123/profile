@@ -3,7 +3,7 @@
  * pg_directory_table.c
  *		  support for directory table.
  *
- * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
+ * Copyright (c) 2016-Present Hashdata, Inc.
  *
  * IDENTIFICATION
  *		  src/backend/catalog/pg_directory_table.c
