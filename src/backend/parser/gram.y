@@ -875,6 +875,8 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 
 	SCATTER SEGMENT SEGMENTS SPLIT SUBPARTITION
 
+    TAG
+
 	TASK SCHEDULE
 
 	THRESHOLD
@@ -4671,6 +4673,10 @@ copy_opt_item:
 				{
 					$$ = makeDefElem("skip_foreign_partitions", (Node *)makeInteger(true), @1);
 				}
+            | TAG Sconst
+                {
+                    $$ = makeDefElem("tag", (Node *)makeString($2), @1);
+                }
 		;
 
 /* The following exist for backward compatibility with very old versions */
@@ -19185,6 +19191,7 @@ unreserved_keyword:
 			| SYSTEM_P
 			| TABLES
 			| TABLESPACE
+			| TAG
 			| TASK
 			| TEMP
 			| TEMPLATE
@@ -20170,6 +20177,7 @@ bare_label_keyword:
 			| TABLES
 			| TABLESAMPLE
 			| TABLESPACE
+			| TAG
 			| TASK
 			| TEMP
 			| TEMPLATE

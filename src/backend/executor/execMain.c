@@ -2089,10 +2089,10 @@ CheckValidResultRel(ResultRelInfo *resultRelInfo, CmdType operation)
 								RelationGetRelationName(resultRel))));
 			break;
 		case RELKIND_DIRECTORY_TABLE:
-			if (operation != CMD_INSERT && operation != CMD_DELETE)
+			if (!allowSystemTableMods)
 				ereport(ERROR,
-						(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
-						 errmsg("directory table \"%s\" does not allow updates",
+						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+						 errmsg("cannot change directory table \"%s\"",
 							    RelationGetRelationName(resultRel))));
 			break;
 
