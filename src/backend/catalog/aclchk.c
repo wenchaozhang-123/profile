@@ -27,6 +27,7 @@
 #include "catalog/binary_upgrade.h"
 #include "catalog/catalog.h"
 #include "catalog/dependency.h"
+#include "catalog/gp_storage_server.h"
 #include "catalog/heap.h"
 #include "catalog/indexing.h"
 #include "catalog/objectaccess.h"
@@ -4848,6 +4849,65 @@ pg_foreign_server_aclmask(Oid srv_oid, Oid roleid,
 }
 
 /*
+ * Exported routine for examining a user's privileges for a storage
+ * server.
+ */
+AclMode
+gp_storage_server_aclmask(Oid srv_oid, Oid roleid,
+						  AclMode mask, AclMaskHow how)
+{
+	AclMode		result;
+	HeapTuple	tuple;
+	Datum		aclDatum;
+	bool		isNull;
+	Acl		   *acl;
+	Oid			ownerId;
+
+	Form_gp_storage_server srvForm;
+
+	/* Bypass permission checks for superusers */
+	if (superuser_arg(roleid))
+		return mask;
+
+	tuple = SearchSysCache1(STORAGESERVEROID, ObjectIdGetDatum(srv_oid));
+	if (!HeapTupleIsValid(tuple))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("storage server with OID %u does not exist",
+					    srv_oid)));
+	srvForm = (Form_gp_storage_server) GETSTRUCT(tuple);
+
+	/*
+	 * Normal case: get the storage server's ACL from gp_storage_server
+	 */
+	ownerId = srvForm->srvowner;
+
+	aclDatum = SysCacheGetAttr(STORAGESERVEROID, tuple,
+							   Anum_gp_storage_server_srvacl, &isNull);
+	if (isNull)
+	{
+		/* No ACL, so build default ACL */
+		acl = acldefault(OBJECT_STORAGE_SERVER, ownerId);
+		aclDatum = (Datum) 0;
+	}
+	else
+	{
+		/* detoast rel's ACL if necessary */
+		acl = DatumGetAclP(aclDatum);
+	}
+
+	result = aclmask(acl, roleid, ownerId, mask, how);
+
+	/* if we have a detoasted copy, free it */
+	if (acl && (Pointer) acl != DatumGetPointer(aclDatum))
+		pfree(acl);
+
+	ReleaseSysCache(tuple);
+
+	return result;
+}
+
+/*
  * Exported routine for examining a user's privileges for a type.
  */
 AclMode
@@ -5265,6 +5325,19 @@ pg_foreign_server_aclcheck(Oid srv_oid, Oid roleid, AclMode mode)
 }
 
 /*
+ * Exported routine for checking a user's access privileges to a storage
+ * server
+ */
+AclResult
+gp_storage_server_aclcheck(Oid srv_oid, Oid roleid, AclMode mode)
+{
+	if (gp_storage_server_aclmask(srv_oid, roleid, mode, ACLMASK_ANY) != 0)
+		return ACLCHECK_OK;
+	else
+		return ACLCHECK_NO_PRIV;
+}
+
+/*
  * Exported routine for checking a user's access privileges to a type
  */
 AclResult
@@ -5674,6 +5747,33 @@ pg_foreign_server_ownercheck(Oid srv_oid, Oid roleid)
 						srv_oid)));
 
 	ownerId = ((Form_pg_foreign_server) GETSTRUCT(tuple))->srvowner;
+
+	ReleaseSysCache(tuple);
+
+	return has_privs_of_role(roleid, ownerId);
+}
+
+/*
+ * Ownership check for a storage server (specified by OID).
+ */
+bool
+gp_storage_server_ownercheck(Oid srv_oid, Oid roleid)
+{
+	HeapTuple	tuple;
+	Oid			ownerId;
+
+	/* Superusers bypass all permission checking. */
+	if (superuser_arg(roleid))
+		return true;
+
+	tuple = SearchSysCache1(STORAGESERVEROID, ObjectIdGetDatum(srv_oid));
+	if (!HeapTupleIsValid(tuple))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("storage server with OID %u does not exist",
+					   srv_oid)));
+
+	ownerId = ((Form_gp_storage_server) GETSTRUCT(tuple))->srvowner;
 
 	ReleaseSysCache(tuple);
 

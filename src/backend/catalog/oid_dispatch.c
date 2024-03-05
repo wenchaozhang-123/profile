@@ -82,6 +82,7 @@
 #include "catalog/catalog.h"
 #include "catalog/indexing.h"
 #include "catalog/gp_storage_server.h"
+#include "catalog/gp_storage_user_mapping.h"
 #include "catalog/pg_am.h"
 #include "catalog/pg_amop.h"
 #include "catalog/pg_amproc.h"
@@ -1171,6 +1172,23 @@ GetNewOidForUserMapping(Relation relation, Oid indexId, AttrNumber oidcolumn,
 	Assert(RelationGetRelid(relation) == UserMappingRelationId);
 	Assert(indexId == UserMappingOidIndexId);
 	Assert(oidcolumn == Anum_pg_user_mapping_oid);
+
+	memset(&key, 0, sizeof(OidAssignment));
+	key.type = T_OidAssignment;
+	key.keyOid1 = umuser;
+	key.keyOid2 = umserver;
+	return GetNewOrPreassignedOid(relation, indexId, oidcolumn, &key);
+}
+
+Oid
+GetNewOidForStorageUserMapping(Relation relation, Oid indexId, AttrNumber oidcolumn,
+							   Oid umuser, Oid umserver)
+{
+	OidAssignment key;
+
+	Assert(RelationGetRelid(relation) == StorageUserMappingRelationId);
+	Assert(indexId == StorageUserMappingOidIndexId);
+	Assert(oidcolumn == Anum_gp_storage_user_mapping_oid);
 
 	memset(&key, 0, sizeof(OidAssignment));
 	key.type = T_OidAssignment;

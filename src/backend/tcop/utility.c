@@ -2063,12 +2063,16 @@ ProcessUtilitySlow(ParseState *pstate,
 				break;
 
 			case T_CreateStorageUserMappingStmt:
+				address = CreateStorageUserMapping((CreateStorageUserMappingStmt *) parsetree);
 				break;
 
 			case T_AlterStorageUserMappingStmt:
+				address = AlterStorageUserMapping((AlterStorageUserMappingStmt *) parsetree);
 				break;
 
 			case T_DropStorageUserMappingStmt:
+				RemoveStorageUserMapping((DropStorageUserMappingStmt *) parsetree);
+				commandCollected = true;
 				break;
 
 			case T_ImportForeignSchemaStmt:

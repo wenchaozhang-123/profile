@@ -22,6 +22,10 @@
 /* Flags for GetStorageServerExtended */
 #define SSV_MISSING_OK	0x01
 
+/* Helper for obtaining username for user mapping */
+#define StorageMappingUserName(userid) \
+	(OidIsValid(userid) ? GetUserNameFromId(userid, false) : "public")
+
 typedef struct StorageServer
 {
 	Oid 		serverid;		/* server Oid */
@@ -35,6 +39,5 @@ extern StorageServer *GetStorageServerExtended(Oid serverid, bits16 flags);
 extern StorageServer *GetStorageServer(Oid serverid);
 extern StorageServer *GetStorageServerByName(const char *srvname, bool missing_ok);
 extern Datum transformStorageGenericOptions(Oid catalogId, Datum oldOptions, List *options);
-extern ObjectAddress CreateStorageServer(CreateStorageServerStmt *stmt);
 
 #endif //STORAGECMDS_H

@@ -17,7 +17,9 @@
 #include "access/htup_details.h"
 #include "access/reloptions.h"
 #include "access/table.h"
+#include "catalog/dependency.h"
 #include "catalog/gp_storage_server.h"
+#include "catalog/gp_storage_user_mapping.h"
 #include "catalog/objectaccess.h"
 #include "catalog/oid_dispatch.h"
 #include "cdb/cdbdisp_query.h"
@@ -331,6 +333,156 @@ CreateStorageServer(CreateStorageServerStmt *stmt)
 	return myself;
 }
 
+/*
+ * Common routine to check permission for storage-user-mapping-related DDL
+ * commands.  We allow server owners to operate on any mapping, and
+ * users to operate on their own mapping.
+ */
+static void
+storage_user_mapping_ddl_aclcheck(Oid umuserid, Oid serverid, const char *servername)
+{
+	Oid			curuserid = GetUserId();
 
+	if (!gp_storage_server_ownercheck(serverid, curuserid))
+	{
+		if (umuserid == curuserid)
+		{
+			AclResult	aclresult;
+
+			aclresult = gp_storage_server_aclcheck(serverid, curuserid, ACL_USAGE);
+			if (aclresult != ACLCHECK_OK)
+				aclcheck_error(aclresult, OBJECT_STORAGE_SERVER, servername);
+		}
+		else
+			aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_STORAGE_SERVER,
+						   servername);
+	}
+}
+
+/*
+ * Create User Mapping
+ */
+ObjectAddress
+CreateStorageUserMapping(CreateStorageUserMappingStmt *stmt)
+{
+	Relation 	rel;
+	Datum 		useoptions;
+	Datum 		values[Natts_gp_storage_user_mapping];
+	bool 		nulls[Natts_gp_storage_user_mapping];
+	HeapTuple 	tuple;
+	Oid			useId;
+	Oid 		umId;
+	ObjectAddress myself;
+	ObjectAddress referenced;
+	StorageServer *srv;
+	RoleSpec	*role = (RoleSpec *) stmt->user;
+
+	rel = table_open(StorageUserMappingRelationId, RowExclusiveLock);
+
+	if (role->roletype == ROLESPEC_PUBLIC)
+		useId = ACL_ID_PUBLIC;
+	else
+		useId = get_rolespec_oid(stmt->user, false);
+
+	/* Check that the server exists. */
+	srv = GetStorageServerByName(stmt->servername, false);
+
+	storage_user_mapping_ddl_aclcheck(useId, srv->serverid, stmt->servername);
+
+	/*
+	 * Check that the user mapping is unique within server.
+	 */
+	umId = GetSysCacheOid2(STORAGEUSERMAPPINGUSERSERVER, Anum_gp_storage_user_mapping_oid,
+						   ObjectIdGetDatum(useId),
+						   ObjectIdGetDatum(srv->serverid));
+
+	if (OidIsValid(umId))
+	{
+		if (stmt->if_not_exists)
+		{
+			ereport(NOTICE,
+					(errcode(ERRCODE_DUPLICATE_OBJECT),
+					 errmsg("storage user mapping for \"%s\" already exists for storage server \"%s\", skipping",
+			 		 StorageMappingUserName(useId),
+			 		 stmt->servername)));
+
+			table_close(rel, RowExclusiveLock);
+			return InvalidObjectAddress;
+		}
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_DUPLICATE_OBJECT),
+					 errmsg("storage user mapping for \"%s\" already exists for storage server \"%s\"",
+			 		 StorageMappingUserName(useId),
+			 		 stmt->servername)));
+	}
+
+	/*
+	 * Insert tuple into gp_storage_user_mapping.
+	 */
+	memset(values, 0, sizeof(values));
+	memset(nulls, 0, sizeof(nulls));
+
+	umId = GetNewOidForStorageUserMapping(rel, StorageUserMappingOidIndexId,
+									   	  Anum_gp_storage_user_mapping_oid,
+									   	  useId, srv->serverid);
+	values[Anum_gp_storage_user_mapping_oid -1] = ObjectIdGetDatum(umId);
+	values[Anum_gp_storage_user_mapping_umuser -1] = ObjectIdGetDatum(useId);
+	values[Anum_gp_storage_user_mapping_umserver - 1] = ObjectIdGetDatum(srv->serverid);
+
+	/* Add user options */
+	useoptions = transformStorageGenericOptions(StorageUserMappingRelationId,
+											 	PointerGetDatum(NULL),
+											 	stmt->options);
+
+	if (PointerIsValid(DatumGetPointer(useoptions)))
+		values[Anum_gp_storage_user_mapping_umoptions - 1] = useoptions;
+	else
+		nulls[Anum_gp_storage_user_mapping_umoptions - 1] = true;
+
+	tuple = heap_form_tuple(rel->rd_att, values, nulls);
+
+	CatalogTupleInsert(rel, tuple);
+
+	heap_freetuple(tuple);
+
+	/* Add dependency on the storage server */
+	myself.classId = StorageUserMappingRelationId;
+	myself.objectId = umId;
+	myself.objectSubId = 0;
+
+	referenced.classId = StorageServerRelationId;
+	referenced.objectId = srv->serverid;
+	referenced.objectSubId = 0;
+	recordDependencyOn(&myself, &referenced, DEPENDENCY_NORMAL);
+
+	if (OidIsValid(useId))
+	{
+		/* Record the mapped user dependency */
+		recordDependencyOnOwner(StorageUserMappingRelationId, umId, useId);
+	}
+
+	/*
+	 * Perhaps someday there should be a recordDependencyOnCurrentExtension
+	 * call here; but since roles aren't members of extensions, it seems like
+	 * storage user mappings shouldn't be either.  Note that the grammar and pg_dump
+	 * would need to be extended too if we change this.
+	 */
+
+	/* Post creation hook for new storage user mapping */
+	InvokeObjectPostCreateHook(StorageUserMappingRelationId, umId, 0);
+
+	if (Gp_role == GP_ROLE_DISPATCH)
+	{
+		CdbDispatchUtilityStatement((Node *) stmt,
+									DF_WITH_SNAPSHOT | DF_CANCEL_ON_ERROR | DF_NEED_TWO_PHASE,
+									GetAssignedOidsForDispatch(),
+									NULL);
+	}
+
+	table_close(rel, RowExclusiveLock);
+
+	return myself;
+}
 
 
