@@ -899,7 +899,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 //						relFileNode->spcNode, GP_TABLESPACE_VERSION_DIRECTORY,
 //		relFileNode->dbNode, fileName);
 	//TODO DFS compatible implement
-	orgiFileName = psprintf("pg_tblspc/%s/%s", dirTable->location, relaFileName);
+	orgiFileName = formatLocalFileName(&cstate->rel->rd_node, relaFileName);
 
 	/* FIXME:
 	 *

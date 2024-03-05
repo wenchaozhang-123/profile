@@ -17,7 +17,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "catalog/pg_tablespace_d.h"
+#include "catalog/pg_tablespace.h"
+#include "common/relpath.h"
 #include "storage/ufile.h"
 #include "storage/fd.h"
 #include "storage/relfilenode.h"
@@ -333,4 +334,15 @@ const char *
 UFileGetLastError(UFile *file)
 {
 	return file->methods->getLastError();
+}
+
+char *
+formatLocalFileName(RelFileNode *relFileNode, const char *fileName)
+{
+	if (relFileNode->spcNode == DEFAULTTABLESPACE_OID)
+		return psprintf("base/%u/%s", relFileNode->dbNode, fileName);
+	else
+		return psprintf("pg_tblspc/%u/%s/%u/%s",
+						relFileNode->spcNode, GP_TABLESPACE_VERSION_DIRECTORY,
+		relFileNode->dbNode, fileName);
 }

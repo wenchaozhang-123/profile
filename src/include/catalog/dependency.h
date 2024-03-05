@@ -143,6 +143,9 @@ typedef enum ObjectClass
 	/* GPDB additions */
 	OCLASS_PROFILE,                         /* pg_profile */
 	OCLASS_PASSWORDHISTORY,                 /* pg_password_history */
+	OCLASS_DIRTABLE,			/* pg_directory_table */
+	OCLASS_STORAGE_SERVER,		/* gp_storage_server */
+	OCLASS_STORAGE_USER_MAPPING,	/* gp_storage_user_mapping */
 	OCLASS_EXTPROTOCOL,			/* pg_extprotocol */
 	OCLASS_TASK,				/* pg_task */
 } ObjectClass;

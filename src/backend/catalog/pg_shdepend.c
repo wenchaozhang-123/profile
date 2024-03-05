@@ -21,6 +21,8 @@
 #include "access/xact.h"
 #include "catalog/catalog.h"
 #include "catalog/dependency.h"
+#include "catalog/gp_storage_server.h"
+#include "catalog/gp_storage_user_mapping.h"
 #include "catalog/indexing.h"
 #include "catalog/pg_authid.h"
 #include "catalog/pg_collation.h"
@@ -1218,6 +1220,26 @@ shdepLockAndCheckObject(Oid classId, Oid objectId)
 						(errcode(ERRCODE_UNDEFINED_OBJECT),
 						 errmsg("profile %u was concurrently dropped",
 							       objectId)));
+				break;
+			}
+
+		case StorageServerRelationId:
+			{
+				if (!SearchSysCacheExists1(STORAGESERVEROID, ObjectIdGetDatum(objectId)))
+					ereport(ERROR,
+							(errcode(ERRCODE_UNDEFINED_OBJECT),
+							 errmsg("storage server %u was concurrently dropped",
+			   						objectId)));
+				break;
+			}
+
+		case StorageUserMappingRelationId:
+			{
+				if (!SearchSysCacheExists1(STORAGEUSERMAPPINGUSERSERVER, ObjectIdGetDatum(objectId)))
+					ereport(ERROR,
+							(errcode(ERRCODE_UNDEFINED_OBJECT),
+							 errmsg("storage user mapping %u was concurrently dropped",
+			   						objectId)));
 				break;
 			}
 

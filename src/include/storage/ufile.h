@@ -38,4 +38,6 @@ extern bool UFileExists(Oid spcId, const char *fileName);
 
 extern const char *UFileGetLastError(UFile *file);
 
+extern char *formatLocalFileName(RelFileNode *relFileNode, const char *fileName);
+
 #endif //FILE_MANIP_H

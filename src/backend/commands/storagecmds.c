@@ -454,7 +454,7 @@ CreateStorageUserMapping(CreateStorageUserMappingStmt *stmt)
 	referenced.classId = StorageServerRelationId;
 	referenced.objectId = srv->serverid;
 	referenced.objectSubId = 0;
-	recordDependencyOn(&myself, &referenced, DEPENDENCY_NORMAL);
+	recordSharedDependencyOn(&myself, &referenced, DEPENDENCY_NORMAL);
 
 	if (OidIsValid(useId))
 	{
@@ -593,11 +593,14 @@ AlterStorageUserMapping(AlterStorageUserMappingStmt *stmt)
 Oid
 RemoveStorageUserMapping(DropStorageUserMappingStmt *stmt)
 {
-	ObjectAddress object;
 	Oid 		useId;
 	Oid 		umId;
 	StorageServer *srv;
 	RoleSpec	*role = (RoleSpec *) stmt->user;
+	Relation	gp_storage_user_mapping_rel;
+	ScanKeyData scankey;
+	SysScanDesc sscan;
+	HeapTuple 	tuple;
 
 	if (role->roletype == ROLESPEC_PUBLIC)
 		useId = ACL_ID_PUBLIC;
@@ -653,14 +656,44 @@ RemoveStorageUserMapping(DropStorageUserMappingStmt *stmt)
 
 	storage_user_mapping_ddl_aclcheck(useId, srv->serverid, srv->servername);
 
-	/*
-	 * Do the deletion
-	 */
-	object.classId = StorageUserMappingRelationId;
-	object.objectId = umId;
-	object.objectSubId = 0;
+	gp_storage_user_mapping_rel = table_open(StorageUserMappingRelationId, RowExclusiveLock);
 
-	performDeletion(&object, DROP_CASCADE, 0);
+	ScanKeyInit(&scankey,
+			 	Anum_gp_storage_user_mapping_umuser,
+			 	BTEqualStrategyNumber, F_OIDEQ,
+			 	ObjectIdGetDatum(useId));
+	sscan = systable_beginscan(gp_storage_user_mapping_rel, InvalidOid,
+							   false, NULL, 1, &scankey);
+
+	tuple = systable_getnext(sscan);
+	if (!HeapTupleIsValid(tuple))
+	{
+		if (!stmt->missing_ok)
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_OBJECT),
+					 errmsg("role \"%s\" does not exist", role->rolename)));
+		}
+		if (Gp_role != GP_ROLE_EXECUTE)
+		{
+			ereport(NOTICE,
+					(errmsg("role \"%s\" does not exist, skipping",
+							role->rolename)));
+		}
+	}
+
+	CatalogTupleDelete(gp_storage_user_mapping_rel, &tuple->t_self);
+
+	systable_endscan(sscan);
+	table_close(gp_storage_user_mapping_rel, RowExclusiveLock);
+
+	/* DROP hook for the role being removed */
+	InvokeObjectDropHook(StorageUserMappingRelationId, umId, 0);
+
+	/*
+	 * Delete shared dependency references related to this role object.
+	 */
+	deleteSharedDependencyRecordsFor(StorageUserMappingRelationId, useId, 0);
 
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{

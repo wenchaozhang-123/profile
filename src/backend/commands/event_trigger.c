@@ -1028,6 +1028,8 @@ EventTriggerSupportsObjectClass(ObjectClass objclass)
 		case OCLASS_ROLE:
 		case OCLASS_PROFILE:
 		case OCLASS_PASSWORDHISTORY:
+		case OCLASS_STORAGE_SERVER:
+		case OCLASS_STORAGE_USER_MAPPING:
 			/* no support for global objects */
 			return false;
 		case OCLASS_EVENT_TRIGGER:
@@ -1067,6 +1069,7 @@ EventTriggerSupportsObjectClass(ObjectClass objclass)
 		case OCLASS_PUBLICATION_REL:
 		case OCLASS_SUBSCRIPTION:
 		case OCLASS_TRANSFORM:
+		case OCLASS_DIRTABLE:
 			return true;
 		case OCLASS_EXTPROTOCOL:
 		case OCLASS_TASK:

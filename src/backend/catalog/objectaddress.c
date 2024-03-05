@@ -22,6 +22,7 @@
 #include "access/sysattr.h"
 #include "access/table.h"
 #include "catalog/catalog.h"
+#include "catalog/gp_storage_user_mapping.h"
 #include "catalog/objectaddress.h"
 #include "catalog/pg_am.h"
 #include "catalog/pg_amop.h"
@@ -76,6 +77,7 @@
 #include "commands/proclang.h"
 #include "commands/queue.h"
 #include "commands/resgroupcmds.h"
+#include "commands/storagecmds.h"
 #include "commands/tablespace.h"
 #include "commands/trigger.h"
 #include "foreign/foreign.h"
@@ -4109,6 +4111,50 @@ getObjectDescription(const ObjectAddress *object, bool missing_ok)
 				break;
 			}
 
+		case OCLASS_STORAGE_SERVER:
+			{
+				StorageServer *srv;
+
+				srv = GetStorageServerExtended(object->objectId, missing_ok);
+				if (srv)
+					appendStringInfo(&buffer, _("storage server %s"), srv->servername);
+				break;
+			}
+
+		case OCLASS_STORAGE_USER_MAPPING:
+			{
+				HeapTuple	tup;
+				Oid			useid;
+				char	   *usename;
+				Form_gp_storage_user_mapping umform;
+				StorageServer *srv;
+
+				tup = SearchSysCache1(STORAGEUSERMAPPINGOID,
+									  ObjectIdGetDatum(object->objectId));
+				if (!HeapTupleIsValid(tup))
+				{
+					if (!missing_ok)
+						elog(ERROR, "cache lookup failed for storage user mapping %u",
+							 object->objectId);
+					break;
+				}
+
+				umform = (Form_gp_storage_user_mapping) GETSTRUCT(tup);
+				useid = umform->umuser;
+				srv = GetStorageServer(umform->umserver);
+
+				ReleaseSysCache(tup);
+
+				if (OidIsValid(useid))
+					usename = GetUserNameFromId(useid, false);
+				else
+					usename = "public";
+
+				appendStringInfo(&buffer, _("storage user mapping for %s on server %s"), usename,
+								 srv->servername);
+				break;
+			}
+
 		default:
 			{
 				struct CustomObjectClass *coc;
@@ -4690,6 +4736,18 @@ getObjectTypeDescription(const ObjectAddress *object, bool missing_ok)
 
 		case OCLASS_PASSWORDHISTORY:
 			appendStringInfoString(&buffer, "password_history");
+			break;
+
+		case OCLASS_DIRTABLE:
+			appendStringInfoString(&buffer, "directory table");
+			break;
+
+		case OCLASS_STORAGE_SERVER:
+			appendStringInfoString(&buffer, "storage server");
+			break;
+
+		case OCLASS_STORAGE_USER_MAPPING:
+			appendStringInfoString(&buffer, "storage user mapping");
 			break;
 
 		default:
@@ -5684,6 +5742,24 @@ getObjectIdentityParts(const ObjectAddress *object,
 				break;
 			}
 
+		case OCLASS_STORAGE_SERVER:
+			{
+				StorageServer *srv;
+
+				srv = GetStorageServerExtended(object->objectId,
+								   			   missing_ok);
+
+				if (srv)
+				{
+					appendStringInfoString(&buffer,
+										   quote_identifier(srv->servername));
+
+					if (objname)
+						*objname = list_make1(pstrdup(srv->servername));
+				}
+				break;
+			}
+
 		case OCLASS_USER_MAPPING:
 			{
 				HeapTuple	tup;
@@ -5721,6 +5797,46 @@ getObjectIdentityParts(const ObjectAddress *object,
 				appendStringInfo(&buffer, "%s on server %s",
 								 quote_identifier(usename),
 								 srv->servername);
+				break;
+			}
+
+		case OCLASS_STORAGE_USER_MAPPING:
+			{
+				HeapTuple 	tup;
+				Oid 		useid;
+				Form_gp_storage_user_mapping umform;
+				StorageServer *srv;
+				const char *usename;
+
+				tup = SearchSysCache1(STORAGEUSERMAPPINGOID,
+						  			  ObjectIdGetDatum(object->objectId));
+				if (!HeapTupleIsValid(tup))
+				{
+					if (!missing_ok)
+						elog(ERROR, "cache lookup failed for storage user mapping %u",
+		   					 object->objectId);
+					break;
+				}
+				umform = (Form_gp_storage_user_mapping) GETSTRUCT(tup);
+				useid = umform->umuser;
+				srv = GetStorageServer(umform->umserver);
+
+				ReleaseSysCache(tup);
+
+				if (OidIsValid(useid))
+					usename = GetUserNameFromId(useid, false);
+				else
+					usename = "public";
+
+				if (objname)
+				{
+					*objname = list_make1(pstrdup(usename));
+					*objargs = list_make1(pstrdup(srv->servername));
+				}
+
+				appendStringInfo(&buffer, "%s on storage server %s",
+					 			 quote_identifier(usename),
+					 			 srv->servername);
 				break;
 			}
 
