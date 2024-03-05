@@ -360,7 +360,7 @@ storage_user_mapping_ddl_aclcheck(Oid umuserid, Oid serverid, const char *server
 }
 
 /*
- * Create User Mapping
+ * Create Storage User Mapping
  */
 ObjectAddress
 CreateStorageUserMapping(CreateStorageUserMappingStmt *stmt)
@@ -485,4 +485,189 @@ CreateStorageUserMapping(CreateStorageUserMappingStmt *stmt)
 	return myself;
 }
 
+/*
+ * Alter storage user mapping
+ */
+ObjectAddress
+AlterStorageUserMapping(AlterStorageUserMappingStmt *stmt)
+{
+	Relation 	rel;
+	HeapTuple 	tp;
+	Datum 		repl_val[Natts_gp_storage_user_mapping];
+	bool		repl_null[Natts_gp_storage_user_mapping];
+	bool		repl_repl[Natts_gp_storage_user_mapping];
+	Oid 		useId;
+	Oid			umId;
+	StorageServer *srv;
+	ObjectAddress address;
+	RoleSpec	*role = (RoleSpec *) stmt->user;
 
+	rel = table_open(StorageUserMappingRelationId, RowExclusiveLock);
+
+	if (role->roletype == ROLESPEC_PUBLIC)
+		useId = ACL_ID_PUBLIC;
+	else
+		useId = get_rolespec_oid(stmt->user, false);
+
+	srv = GetStorageServerByName(stmt->servername, false);
+
+	umId = GetSysCacheOid2(STORAGEUSERMAPPINGUSERSERVER, Anum_gp_storage_user_mapping_oid,
+						   ObjectIdGetDatum(useId),
+						   ObjectIdGetDatum(srv->serverid));
+
+	if (!OidIsValid(umId))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("storage user mapping for \"%s\" does not exist for server \"%s\"",
+						StorageMappingUserName(useId), stmt->servername)));
+
+	storage_user_mapping_ddl_aclcheck(useId, srv->serverid, stmt->servername);
+
+	tp = SearchSysCacheCopy1(STORAGEUSERMAPPINGOID, ObjectIdGetDatum(umId));
+
+	if (!HeapTupleIsValid(tp))
+		elog(ERROR, "cache lookup failed for storage user mapping %u", umId);
+
+	memset(repl_val, 0, sizeof(repl_val));
+	memset(repl_null, false, sizeof(repl_null));
+	memset(repl_repl, false, sizeof(repl_repl));
+
+	if (stmt->options)
+	{
+		Datum 	datum;
+		bool	isnull;
+
+		/*
+		 * Process the options.
+		 */
+		datum = SysCacheGetAttr(STORAGEUSERMAPPINGUSERSERVER,
+						  		tp,
+						  		Anum_gp_storage_user_mapping_umoptions,
+						  		&isnull);
+
+		if (isnull)
+			datum = PointerGetDatum(NULL);
+
+		/* Prepare the options array */
+		datum = transformStorageGenericOptions(StorageUserMappingRelationId,
+										 	   datum,
+										 	   stmt->options);
+
+		if (PointerIsValid(DatumGetPointer(datum)))
+			repl_val[Anum_gp_storage_user_mapping_umoptions - 1] = datum;
+		else
+			repl_null[Anum_gp_storage_user_mapping_umoptions - 1] = true;
+
+		repl_repl[Anum_gp_storage_user_mapping_umoptions - 1] = true;
+	}
+
+	/* Everything looks good - update the tuple */
+	tp = heap_modify_tuple(tp, RelationGetDescr(rel),
+						   repl_val, repl_null, repl_repl);
+
+	CatalogTupleUpdate(rel, &tp->t_self, tp);
+
+	InvokeObjectPostAlterHook(StorageUserMappingRelationId,
+						   	  umId, 0);
+
+	ObjectAddressSet(address, StorageUserMappingRelationId, umId);
+
+	heap_freetuple(tp);
+
+	if (Gp_role == GP_ROLE_DISPATCH)
+	{
+		CdbDispatchUtilityStatement((Node *) stmt,
+									DF_WITH_SNAPSHOT | DF_CANCEL_ON_ERROR | DF_NEED_TWO_PHASE,
+									GetAssignedOidsForDispatch(),
+									NULL);
+	}
+
+	table_close(rel, RowExclusiveLock);
+
+	return address;
+}
+
+/*
+ * Drop storage user mapping
+ */
+Oid
+RemoveStorageUserMapping(DropStorageUserMappingStmt *stmt)
+{
+	ObjectAddress object;
+	Oid 		useId;
+	Oid 		umId;
+	StorageServer *srv;
+	RoleSpec	*role = (RoleSpec *) stmt->user;
+
+	if (role->roletype == ROLESPEC_PUBLIC)
+		useId = ACL_ID_PUBLIC;
+	else
+	{
+		useId = get_rolespec_oid(stmt->user, stmt->missing_ok);
+		if (!OidIsValid(useId))
+		{
+			/*
+			 * IF EXISTS specified, role not found and not public. Notice this
+			 * and leave.
+			 */
+			elog(NOTICE, "role \"%s\" does not exist, skipping",
+				 role->rolename);
+			return InvalidOid;
+		}
+	}
+
+	srv = GetStorageServerByName(stmt->servername, true);
+
+	if (!srv)
+	{
+		if (!stmt->missing_ok)
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_OBJECT),
+					 errmsg("storage server \"%s\" does not exist",
+			 				stmt->servername)));
+		/* IF EXISTS, just note it */
+		ereport(NOTICE,
+				(errmsg("storage server \"%s\" does not exist, skipping",
+						stmt->servername)));
+		return InvalidOid;
+	}
+
+	umId = GetSysCacheOid2(STORAGEUSERMAPPINGUSERSERVER, Anum_gp_storage_user_mapping_oid,
+						   ObjectIdGetDatum(useId),
+						   ObjectIdGetDatum(srv->serverid));
+
+	if (!OidIsValid(umId))
+	{
+		if (!stmt->missing_ok)
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_OBJECT),
+					 errmsg("storage user mapping for \"%s\" does not exist for storage server \"%s\"",
+			 				StorageMappingUserName(useId), stmt->servername)));
+
+		/* IF EXISTS specified, just note it */
+		ereport(NOTICE,
+				(errmsg("storage user mapping for \"%s\" does not exist for storage server \"%s\", skipping",
+						StorageMappingUserName(useId), stmt->servername)));
+		return InvalidOid;
+	}
+
+	storage_user_mapping_ddl_aclcheck(useId, srv->serverid, srv->servername);
+
+	/*
+	 * Do the deletion
+	 */
+	object.classId = StorageUserMappingRelationId;
+	object.objectId = umId;
+	object.objectSubId = 0;
+
+	performDeletion(&object, DROP_CASCADE, 0);
+
+	if (Gp_role == GP_ROLE_DISPATCH)
+	{
+		CdbDispatchUtilityStatement((Node *) stmt,
+									DF_WITH_SNAPSHOT | DF_CANCEL_ON_ERROR | DF_NEED_TWO_PHASE,
+									GetAssignedOidsForDispatch(),
+									NULL);
+	}
+	return umId;
+}
