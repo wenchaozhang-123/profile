@@ -8116,7 +8116,7 @@ CreateDirectoryTableStmt:
                     n->base.options = NIL;
                     n->base.oncommit = ONCOMMIT_NOOP;
                     /* TODO: support tablespace for data table ? */
-                    n->base.tablespacename = NULL;
+                    n->base.tablespacename = $6;
                     n->base.if_not_exists = false;
                     n->base.distributedBy = (DistributedBy *) $7;
                     n->base.relKind = RELKIND_DIRECTORY_TABLE;
@@ -8137,7 +8137,7 @@ CreateDirectoryTableStmt:
                     n->base.options = NIL;
                     n->base.oncommit = ONCOMMIT_NOOP;
                     /* TODO: support tablespace for data table? */
-                    n->base.tablespacename = NULL;
+                    n->base.tablespacename = $9;
                     n->base.if_not_exists = true;
                     n->base.distributedBy = (DistributedBy *) $10;
                     n->base.relKind = RELKIND_DIRECTORY_TABLE;
