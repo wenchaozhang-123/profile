@@ -13,6 +13,8 @@
  */
 #include "postgres.h"
 
+#include <sys/stat.h>
+
 #include "access/htup_details.h"
 #include "access/reloptions.h"
 #include "access/table.h"
@@ -66,9 +68,9 @@ typedef struct TableFunctionContext
 Datum directory_table(PG_FUNCTION_ARGS);
 
 static char *
-getDirectoryTablePath(Oid spcId, Oid dbId, RelFileNodeId relId)
+getDirectoryTablePath(Oid spcId, Oid dbId, RelFileNodeId relFileId)
 {
-	return psprintf("%u/%u/dirtable/"UINT64_FORMAT, spcId, dbId, relId);
+	return psprintf("%u/%s/%u/dirtable/"UINT64_FORMAT, spcId, GP_TABLESPACE_VERSION_DIRECTORY, dbId, relFileId);
 }
 
 static Oid
@@ -122,10 +124,18 @@ CreateDirectoryTable(CreateDirectoryTableStmt *stmt, Oid relId)
 	bool 		nulls[Natts_pg_directory_table];
 	HeapTuple	tuple;
 	char 		*dirTablePath;
+	char		*dirTableDirectory;
 	Oid 		spcId = chooseTableSpace(stmt);
 
 	dirTablePath = getDirectoryTablePath(spcId, MyDatabaseId, stmt->relnode);
+	dirTableDirectory = psprintf("pg_tblspc/%s", dirTablePath);
 
+	if (mkdir(dirTableDirectory, S_IRWXU) < 0)
+	{
+		ereport(ERROR,
+					(errcode_for_file_access(),
+					errmsg("unable to create directory \"%s\"", dirTableDirectory)));
+	}
 	/*
 	 * Advance command counter to ensure the pg_attribute tuple is visible;
 	 * the tuple might be updated to add constraints in previous step.

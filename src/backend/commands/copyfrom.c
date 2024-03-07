@@ -760,6 +760,7 @@ formDirTableSlot(CopyFromState cstate,
 	field[4] = tags; /* tags */
 	if (tags == NULL)
 		nulls[4] = true;
+	field[5] = buf->data;
 
 	/* Loop to read the user attributes on the line. */
 	foreach(cur, attnumlist)
@@ -793,12 +794,10 @@ CopyFromDirectoryTable(CopyFromState cstate)
 	int			bytesRead;
 	//int			bytesWrite;
 	char		hexMd5Sum[256];
-//	char		errorMessage[256];
 	char		buffer[DIR_FILE_BUFF_SIZE];
 	int64		processed = 0;
 	int64		fileSize = 0;
 	CdbCopy	   *cdbCopy = NULL;
-//	UFile    *file;
 	char	   *orgiFileName;
 	char	   *relaFileName;
 	TupleDesc	tupdesc;
@@ -845,7 +844,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 	/*
 	 * build tupledesc and slot for copy from
 	 */
-	tupdesc = CreateTemplateTupleDesc(5);
+	tupdesc = CreateTemplateTupleDesc(6);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "relative_path",
 					   TEXTOID, -1, 0);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "size",
@@ -856,8 +855,8 @@ CopyFromDirectoryTable(CopyFromState cstate)
 					   TEXTOID, -1, 0);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 5, "tag",
 					   TEXTOID, -1 ,0);
-//		TupleDescInitEntry(tupdesc, (AttrNumber) 6, "file",
-//					 		TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 6, "file",
+					   TEXTOID, -1, 0);
 
 	myslot = MakeSingleTupleTableSlot(tupdesc, &TTSOpsVirtual);
 
@@ -1028,26 +1027,64 @@ CopyFromDirectoryTable(CopyFromState cstate)
 	else if (cstate->dispatch_mode == COPY_EXECUTOR)
 	{
 		List	   *recheckIndexes = NIL;
+		TupleTableSlot *tmpslot = NULL;
 		CommandId	mycid = GetCurrentCommandId(true);
 		MemoryContext oldcontext = CurrentMemoryContext;
+		char		errorMessage[256];
+		UFile    *file;
+		char 		*file_buf;
 
-//		if (UFileExists(dirTable->spcId, orgiFileName))
-//			ereport(ERROR,
-//						(errcode(ERRCODE_DUPLICATE_OBJECT),
-//						 errmsg("file \"%s\" already exists", relaFileName)));
-//
-//		file = UFileOpen(dirTable->spcId,
-//						 orgiFileName,
-//						 O_CREAT | O_WRONLY,
-//						 errorMessage,
-//						 sizeof(errorMessage));
-//		if (file == NULL)
-//			ereport(ERROR,
-//						(errcode(ERRCODE_INTERNAL_ERROR),
-//						 errmsg("failed to open file \"%s\": %s", orgiFileName, errorMessage)));
+		econtext = GetPerTupleExprContext(estate);
 
-		/* Delete uploaded file when the transaction fails */
-		FileAddCreatePendingEntry(cstate->rel, dirTable->spcId, orgiFileName);
+		if (NextCopyFromExecute(cstate, econtext, myslot->tts_values, myslot->tts_isnull))
+		{
+			if (UFileExists(dirTable->spcId, orgiFileName))
+				ereport(ERROR,
+							(errcode(ERRCODE_DUPLICATE_OBJECT),
+						 	 errmsg("file \"%s\" already exists", relaFileName)));
+
+			file = UFileOpen(dirTable->spcId,
+						 	orgiFileName,
+						 	O_CREAT | O_WRONLY,
+						 	errorMessage,
+						 	sizeof(errorMessage));
+			if (file == NULL)
+				ereport(ERROR,
+							(errcode(ERRCODE_INTERNAL_ERROR),
+						 	 errmsg("failed to open file \"%s\": %s", orgiFileName, errorMessage)));
+
+			/* Delete uploaded file when the transaction fails */
+			FileAddCreatePendingEntry(cstate->rel, dirTable->spcId, orgiFileName);
+
+			file_buf = DatumGetCString(myslot->tts_values[5]);
+
+			if (UFileWrite(file, file_buf, strlen(file_buf)) == -1)
+				ereport(ERROR,
+							(errcode(ERRCODE_INTERNAL_ERROR),
+							 errmsg("failed to write file \"%s\": %s", orgiFileName, UFileGetLastError(file))));
+
+			fileSize = strlen(file_buf);
+
+			pfree(tupdesc);
+			tupdesc = CreateTemplateTupleDesc(5);
+			TupleDescInitEntry(tupdesc, (AttrNumber) 1, "relative_path",
+							   TEXTOID, -1, 0);
+			TupleDescInitEntry(tupdesc, (AttrNumber) 2, "size",
+							   INT8OID, -1, 0);
+			TupleDescInitEntry(tupdesc, (AttrNumber) 3, "last_modified",
+							   TIMESTAMPTZOID, -1, 0);
+			TupleDescInitEntry(tupdesc, (AttrNumber) 4, "md5",
+							   TEXTOID, -1, 0);
+			TupleDescInitEntry(tupdesc, (AttrNumber) 5, "tag",
+							   TEXTOID, -1 ,0);
+
+			tmpslot = MakeSingleTupleTableSlot(tupdesc, &TTSOpsVirtual);
+
+			memcpy(tmpslot->tts_values, myslot->tts_values, sizeof(Datum *) * sizeof(tmpslot->tts_values));
+			memcpy(tmpslot->tts_isnull, myslot->tts_isnull, sizeof(bool *) * sizeof(tmpslot->tts_isnull));
+
+			cstate->rel->rd_att = CreateTupleDescCopy(tupdesc);
+			cstate->rel->rd_att->tdrefcount = 1;	/* mark as refcounted */
 
 //		for (;;)
 //		{
@@ -1073,10 +1110,6 @@ CopyFromDirectoryTable(CopyFromState cstate)
 //			}
 //		}
 
-		econtext = GetPerTupleExprContext(estate);
-
-		if (NextCopyFromExecute(cstate, econtext, myslot->tts_values, myslot->tts_isnull))
-		{
 			/*
 			 * Reset the per-tuple exprcontext. We do this after every tuple, to
 			 * clean-up after expression evaluations etc.
@@ -1090,6 +1123,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 			MemoryContextSwitchTo(GetPerTupleMemoryContext(estate));
 
 			ExecClearTuple(myslot);
+			ExecClearTuple(tmpslot);
 
 			/*
 			 * NextCopyFromExecute set up estate->es_result_relation_info,
@@ -1097,7 +1131,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 			 */
 			resultRelInfo = estate->es_result_relations[0];
 
-			ExecStoreVirtualTuple(myslot);
+			ExecStoreVirtualTuple(tmpslot);
 
 			/* Triggers and stuff need to be invoked in query context. */
 			MemoryContextSwitchTo(oldcontext);
@@ -1106,14 +1140,14 @@ CopyFromDirectoryTable(CopyFromState cstate)
 			 * Constraints and where clause might reference the tableoid column,
 			 * so (re-)initialize tts_tableOid before evaluating them.
 			 */
-			myslot->tts_tableOid = RelationGetRelid(target_resultRelInfo->ri_RelationDesc);
+			tmpslot->tts_tableOid = RelationGetRelid(target_resultRelInfo->ri_RelationDesc);
 
 			/* OK, store the tuple and create index entries for it */
 			table_tuple_insert(resultRelInfo->ri_RelationDesc,
-							   myslot, mycid, 0, NULL);
+							   tmpslot, mycid, 0, NULL);
 
 			recheckIndexes = ExecInsertIndexTuples(resultRelInfo,
-												   myslot,
+												   tmpslot,
 												   estate,
 												   false,
 												   false,
@@ -1121,7 +1155,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 												   NIL);
 
 			/* AFTER ROW INSERT Triggers */
-			ExecARInsertTriggers(estate, resultRelInfo, myslot,
+			ExecARInsertTriggers(estate, resultRelInfo, tmpslot,
 								 recheckIndexes, cstate->transition_capture);
 
 			list_free(recheckIndexes);
@@ -1251,9 +1285,27 @@ BeginCopyFromDirectoryTable(ParseState *pstate,
 	if (pstate)
 		cstate->range_table = pstate->p_rtable;
 
-	tupDesc = RelationGetDescr(cstate->rel);
+	/*
+	 * build tupledesc and slot for copy from
+	 */
+	tupDesc = CreateTemplateTupleDesc(6);
+	TupleDescInitEntry(tupDesc, (AttrNumber) 1, "relative_path",
+					   TEXTOID, -1, 0);
+	TupleDescInitEntry(tupDesc, (AttrNumber) 2, "size",
+					   INT8OID, -1, 0);
+	TupleDescInitEntry(tupDesc, (AttrNumber) 3, "last_modified",
+					   TIMESTAMPTZOID, -1, 0);
+	TupleDescInitEntry(tupDesc, (AttrNumber) 4, "md5",
+					   TEXTOID, -1, 0);
+	TupleDescInitEntry(tupDesc, (AttrNumber) 5, "tag",
+					   TEXTOID, -1 ,0);
+	TupleDescInitEntry(tupDesc, (AttrNumber) 6, "file",
+					   TEXTOID, -1, 0);
+
 	num_phys_attrs = tupDesc->natts;
 
+	cstate->rel->rd_att = CreateTupleDescCopy(tupDesc);
+	cstate->rel->rd_att->tdrefcount = 1;	/* mark as refcounted */
 	cstate->attnumlist = CopyGetAttnums(tupDesc, cstate->rel, NIL);
 	/*
 	 * Pick up the required catalog information for each attribute in the

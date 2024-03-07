@@ -18,6 +18,7 @@
 #include <unistd.h>
 
 #include "catalog/pg_tablespace.h"
+#include "cdb/cdbvars.h"
 #include "common/relpath.h"
 #include "storage/ufile.h"
 #include "storage/fd.h"
@@ -342,7 +343,7 @@ formatLocalFileName(RelFileNode *relFileNode, const char *fileName)
 	if (relFileNode->spcNode == DEFAULTTABLESPACE_OID)
 		return psprintf("base/%u/%s", relFileNode->dbNode, fileName);
 	else
-		return psprintf("pg_tblspc/%u/%s/%u/%s",
+		return psprintf("pg_tblspc/%u/%s/%u/dirtable/"UINT64_FORMAT"/%s",
 						relFileNode->spcNode, GP_TABLESPACE_VERSION_DIRECTORY,
-		relFileNode->dbNode, fileName);
+						relFileNode->dbNode, relFileNode->relNode, fileName);
 }
