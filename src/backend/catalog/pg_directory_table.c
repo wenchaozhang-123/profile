@@ -95,6 +95,18 @@ GetDirectoryTableBuiltinColumns(void)
 		columnDef->typeName = SystemTypeName(pstrdup(dirTableColumns[i].typName));
 		columnDef->is_local = true;
 
+		if (i == 0)
+		{
+			Constraint *constraint = makeNode(Constraint);
+			constraint->contype = CONSTR_UNIQUE;
+			constraint->location = -1;
+			constraint->keys = NIL;
+			constraint->options = NIL;
+			constraint->indexname = NULL;
+			constraint->indexspace = NULL;
+			columnDef->constraints = list_make1(constraint);
+		}
+
 		result = lappend(result, columnDef);
 	}
 

@@ -817,6 +817,8 @@ CopyFromDirectoryTable(CopyFromState cstate)
 	resultRelInfo = target_resultRelInfo = makeNode(ResultRelInfo);
 	ExecInitResultRelation(estate, resultRelInfo, 1);
 
+	ExecOpenIndices(resultRelInfo, false);
+
 	/* Prepare to catch AFTER triggers. */
 	AfterTriggerBeginQuery();
 

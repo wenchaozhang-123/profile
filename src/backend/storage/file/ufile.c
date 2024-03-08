@@ -256,17 +256,6 @@ localGetLastError(void)
 	return localFileErrorStr;
 }
 
-//static char *
-//formatLocalFileName(RelFileNode *relFileNode, const char *fileName)
-//{
-//	if (relFileNode->spcNode == DEFAULTTABLESPACE_OID)
-//		return psprintf("base/%u/%s", relFileNode->dbNode, fileName);
-//	else
-//		return psprintf("pg_tblspc/%u/%s/%u/%s",
-//						relFileNode->spcNode, GP_TABLESPACE_VERSION_DIRECTORY,
-//		relFileNode->dbNode, fileName);
-//}
-
 void
 UFileClose(UFile *file)
 {

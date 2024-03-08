@@ -365,7 +365,7 @@ remove_file_segment(PG_FUNCTION_ARGS)
 	if (HeapTupleIsValid(tuple))
 	{
 		CatalogTupleDelete(relation, &tuple->t_self);
-		fullPathName = psprintf("/%s/%s", dirTable->location, relativePath);
+		fullPathName = psprintf("%s/%s", dirTable->location, relativePath);
 		FileAddDeletePendingEntry(relation, dirTable->spcId, fullPathName);
 		exist = true;
 	}
