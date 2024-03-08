@@ -57,6 +57,7 @@
 #include "storage/fd.h"
 #include "storage/ufile.h"
 #include "tcop/tcopprot.h"
+#include "utils/builtins.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/portal.h"
@@ -1026,6 +1027,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 	}
 	else if (cstate->dispatch_mode == COPY_EXECUTOR)
 	{
+#define DIRECTORY_TABLE_COLUMNS	5
 		List	   *recheckIndexes = NIL;
 		TupleTableSlot *tmpslot = NULL;
 		CommandId	mycid = GetCurrentCommandId(true);
@@ -1033,6 +1035,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 		char		errorMessage[256];
 		UFile    *file;
 		char 		*file_buf;
+		int			i;
 
 		econtext = GetPerTupleExprContext(estate);
 
@@ -1056,7 +1059,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 			/* Delete uploaded file when the transaction fails */
 			FileAddCreatePendingEntry(cstate->rel, dirTable->spcId, orgiFileName);
 
-			file_buf = DatumGetCString(myslot->tts_values[5]);
+			file_buf = TextDatumGetCString(myslot->tts_values[5]);
 
 			if (UFileWrite(file, file_buf, strlen(file_buf)) == -1)
 				ereport(ERROR,
@@ -1066,7 +1069,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 			fileSize = strlen(file_buf);
 
 			pfree(tupdesc);
-			tupdesc = CreateTemplateTupleDesc(5);
+			tupdesc = CreateTemplateTupleDesc(DIRECTORY_TABLE_COLUMNS);
 			TupleDescInitEntry(tupdesc, (AttrNumber) 1, "relative_path",
 							   TEXTOID, -1, 0);
 			TupleDescInitEntry(tupdesc, (AttrNumber) 2, "size",
@@ -1080,8 +1083,11 @@ CopyFromDirectoryTable(CopyFromState cstate)
 
 			tmpslot = MakeSingleTupleTableSlot(tupdesc, &TTSOpsVirtual);
 
-			memcpy(tmpslot->tts_values, myslot->tts_values, sizeof(Datum *) * sizeof(tmpslot->tts_values));
-			memcpy(tmpslot->tts_isnull, myslot->tts_isnull, sizeof(bool *) * sizeof(tmpslot->tts_isnull));
+			for (i = 0; i < DIRECTORY_TABLE_COLUMNS; i++)
+			{
+				tmpslot->tts_values[i] = myslot->tts_values[i];
+				tmpslot->tts_isnull[i] = myslot->tts_isnull[i];
+			}
 
 			cstate->rel->rd_att = CreateTupleDescCopy(tupdesc);
 			cstate->rel->rd_att->tdrefcount = 1;	/* mark as refcounted */
@@ -1133,14 +1139,14 @@ CopyFromDirectoryTable(CopyFromState cstate)
 
 			ExecStoreVirtualTuple(tmpslot);
 
-			/* Triggers and stuff need to be invoked in query context. */
-			MemoryContextSwitchTo(oldcontext);
-
 			/*
 			 * Constraints and where clause might reference the tableoid column,
 			 * so (re-)initialize tts_tableOid before evaluating them.
 			 */
 			tmpslot->tts_tableOid = RelationGetRelid(target_resultRelInfo->ri_RelationDesc);
+
+			/* Triggers and stuff need to be invoked in query context. */
+			MemoryContextSwitchTo(oldcontext);
 
 			/* OK, store the tuple and create index entries for it */
 			table_tuple_insert(resultRelInfo->ri_RelationDesc,
@@ -1159,6 +1165,20 @@ CopyFromDirectoryTable(CopyFromState cstate)
 								 recheckIndexes, cstate->transition_capture);
 
 			list_free(recheckIndexes);
+			pfree(tupdesc);
+
+			/*
+			 * We count only tuples not suppressed by a BEFORE INSERT trigger
+			 * or FDW; this is the same definition used by nodeModifyTable.c
+			 * for counting tuples inserted by an INSERT command.  Update
+			 * progress of the COPY command as well.
+			 *
+			 * MPP: incrementing this counter here only matters for utility
+			 * mode. in dispatch mode only the dispatcher COPY collects row
+			 * count, so this counter is meaningless.
+			 */
+			pgstat_progress_update_param(PROGRESS_COPY_TUPLES_PROCESSED,
+										 ++processed);
 		}
 	}
 	else

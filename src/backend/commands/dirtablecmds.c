@@ -70,7 +70,7 @@ Datum directory_table(PG_FUNCTION_ARGS);
 static char *
 getDirectoryTablePath(Oid spcId, Oid dbId, RelFileNodeId relFileId)
 {
-	return psprintf("%u/%s/%u/dirtable/"UINT64_FORMAT, spcId, GP_TABLESPACE_VERSION_DIRECTORY, dbId, relFileId);
+	return psprintf("pg_tblspc/%u/%s/%u/"UINT64_FORMAT"_dirtable", spcId, GP_TABLESPACE_VERSION_DIRECTORY, dbId, relFileId);
 }
 
 static Oid
@@ -124,17 +124,15 @@ CreateDirectoryTable(CreateDirectoryTableStmt *stmt, Oid relId)
 	bool 		nulls[Natts_pg_directory_table];
 	HeapTuple	tuple;
 	char 		*dirTablePath;
-	char		*dirTableDirectory;
 	Oid 		spcId = chooseTableSpace(stmt);
 
 	dirTablePath = getDirectoryTablePath(spcId, MyDatabaseId, stmt->relnode);
-	dirTableDirectory = psprintf("pg_tblspc/%s", dirTablePath);
 
-	if (mkdir(dirTableDirectory, S_IRWXU) < 0)
+	if (mkdir(dirTablePath, S_IRWXU) < 0)
 	{
 		ereport(ERROR,
 					(errcode_for_file_access(),
-					errmsg("unable to create directory \"%s\"", dirTableDirectory)));
+					errmsg("unable to create directory \"%s\"", dirTablePath)));
 	}
 	/*
 	 * Advance command counter to ensure the pg_attribute tuple is visible;
@@ -213,7 +211,7 @@ getFileContent(Oid spcId, char *scopedFileUrl)
 static char *
 getScopedFileUrl(DirectoryTable *dirTable, char *relativePath)
 {
-	return psprintf("/%s/%s", dirTable->location, relativePath);
+	return psprintf("%s/%s", dirTable->location, relativePath);
 }
 
 Datum

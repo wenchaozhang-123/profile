@@ -343,7 +343,7 @@ formatLocalFileName(RelFileNode *relFileNode, const char *fileName)
 	if (relFileNode->spcNode == DEFAULTTABLESPACE_OID)
 		return psprintf("base/%u/%s", relFileNode->dbNode, fileName);
 	else
-		return psprintf("pg_tblspc/%u/%s/%u/dirtable/"UINT64_FORMAT"/%s",
+		return psprintf("pg_tblspc/%u/%s/%u/"UINT64_FORMAT"_dirtable/%s",
 						relFileNode->spcNode, GP_TABLESPACE_VERSION_DIRECTORY,
 						relFileNode->dbNode, relFileNode->relNode, fileName);
 }
