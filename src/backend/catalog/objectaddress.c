@@ -22,6 +22,7 @@
 #include "access/sysattr.h"
 #include "access/table.h"
 #include "catalog/catalog.h"
+#include "catalog/gp_storage_server.h"
 #include "catalog/gp_storage_user_mapping.h"
 #include "catalog/objectaddress.h"
 #include "catalog/pg_am.h"
@@ -297,6 +298,20 @@ static const ObjectPropertyType ObjectProperty[] =
 		Anum_pg_foreign_server_srvowner,
 		Anum_pg_foreign_server_srvacl,
 		OBJECT_FOREIGN_SERVER,
+		true
+	},
+	{
+		"storage server",
+		StorageServerRelationId,
+		StorageServerOidIndexId,
+		STORAGESERVEROID,
+		STORAGESERVERNAME,
+		Anum_gp_storage_server_oid,
+		Anum_gp_storage_server_srvname,
+		InvalidAttrNumber,
+		Anum_gp_storage_server_srvowner,
+		Anum_gp_storage_server_srvacl,
+		OBJECT_STORAGE_SERVER,
 		true
 	},
 	{
@@ -655,6 +670,20 @@ static const ObjectPropertyType ObjectProperty[] =
 		InvalidAttrNumber,
 		InvalidAttrNumber,
 		OBJECT_USER_MAPPING,
+		false
+	},
+	{
+		"storage user mapping",
+		StorageUserMappingRelationId,
+		StorageUserMappingOidIndexId,
+		STORAGEUSERMAPPINGOID,
+		-1,
+		Anum_gp_storage_user_mapping_oid,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		OBJECT_STORAGE_USER_MAPPING,
 		false
 	},
 
@@ -1412,6 +1441,11 @@ get_object_address_unqualified(ObjectType objtype,
 		case OBJECT_PROFILE:
 			address.classId = ProfileRelationId;
 			address.objectId = get_profile_oid(name, missing_ok);
+			address.objectSubId = 0;
+			break;
+		case OBJECT_STORAGE_SERVER:
+			address.classId = StorageServerRelationId;
+			address.objectId = get_storage_server_oid(name, missing_ok);
 			address.objectSubId = 0;
 			break;
 		default:
@@ -2575,6 +2609,11 @@ check_object_ownership(Oid roleid, ObjectType objtype, ObjectAddress address,
 			break;
 		case OBJECT_FOREIGN_SERVER:
 			if (!pg_foreign_server_ownercheck(address.objectId, roleid))
+				aclcheck_error(ACLCHECK_NOT_OWNER, objtype,
+							   strVal((Value *) object));
+			break;
+		case OBJECT_STORAGE_SERVER:
+			if (!gp_storage_server_ownercheck(address.objectId, roleid))
 				aclcheck_error(ACLCHECK_NOT_OWNER, objtype,
 							   strVal((Value *) object));
 			break;

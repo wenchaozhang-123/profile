@@ -8117,6 +8117,11 @@ CreateDirectoryTableStmt:
                     n->base.oncommit = ONCOMMIT_NOOP;
                     /* TODO: support tablespace for data table ? */
                     n->base.tablespacename = $6;
+                    if (n->base.tablespacename == NULL)
+                        ereport(ERROR,
+                    				(errcode(ERRCODE_SYNTAX_ERROR),
+                    				 errmsg("Tablespace is disallowed to use NULL in create directory table."),
+                                     parser_errposition(@6)));
                     n->base.if_not_exists = false;
                     n->base.distributedBy = (DistributedBy *) $7;
                     n->base.relKind = RELKIND_DIRECTORY_TABLE;
@@ -8138,6 +8143,11 @@ CreateDirectoryTableStmt:
                     n->base.oncommit = ONCOMMIT_NOOP;
                     /* TODO: support tablespace for data table? */
                     n->base.tablespacename = $9;
+                    if (n->base.tablespacename == NULL)
+                        ereport(ERROR,
+                                    (errcode(ERRCODE_SYNTAX_ERROR),
+                                     errmsg("Tablespace is disallowed to use NULL in create directory table."),
+                                     parser_errposition(@9)));
                     n->base.if_not_exists = true;
                     n->base.distributedBy = (DistributedBy *) $10;
                     n->base.relKind = RELKIND_DIRECTORY_TABLE;
@@ -9315,6 +9325,7 @@ drop_type_name:
 			| PUBLICATION							{ $$ = OBJECT_PUBLICATION; }
 			| SCHEMA								{ $$ = OBJECT_SCHEMA; }
 			| SERVER								{ $$ = OBJECT_FOREIGN_SERVER; }
+			| STORAGE SERVER                        { $$ = OBJECT_STORAGE_SERVER; }
 			| PROTOCOL								{ $$ = OBJECT_EXTPROTOCOL; }
 		;
 
