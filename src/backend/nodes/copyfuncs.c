@@ -5014,6 +5014,17 @@ _copyCreateStorageServerStmt(const CreateStorageServerStmt *from)
 	return newnode;
 }
 
+static DropStorageServerStmt *
+_copyDropStorageServerStmt(const DropStorageServerStmt *from)
+{
+	DropStorageServerStmt  *newnode = makeNode( DropStorageServerStmt);
+
+	COPY_STRING_FIELD(servername);
+	COPY_SCALAR_FIELD(missing_ok);
+
+	return newnode;
+}
+
 static CreateUserMappingStmt *
 _copyCreateUserMappingStmt(const CreateUserMappingStmt *from)
 {
@@ -6836,6 +6847,9 @@ copyObjectImpl(const void *from)
 			break;
 		case T_CreateStorageServerStmt:
 			retval = _copyCreateStorageServerStmt(from);
+			break;
+		case T_DropStorageServerStmt:
+			retval = _copyDropStorageServerStmt(from);
 			break;
 		case T_CreateUserMappingStmt:
 			retval = _copyCreateUserMappingStmt(from);

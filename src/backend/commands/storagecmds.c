@@ -242,6 +242,32 @@ transformStorageGenericOptions(Oid catalogId,
 }
 
 /*
+ * Common routine to check permission for storage-user-mapping-related DDL
+ * commands.  We allow server owners to operate on any mapping, and
+ * users to operate on their own mapping.
+ */
+static void
+storage_user_mapping_ddl_aclcheck(Oid umuserid, Oid serverid, const char *servername)
+{
+	Oid			curuserid = GetUserId();
+
+	if (!gp_storage_server_ownercheck(serverid, curuserid))
+	{
+		if (umuserid == curuserid)
+		{
+			AclResult	aclresult;
+
+			aclresult = gp_storage_server_aclcheck(serverid, curuserid, ACL_USAGE);
+			if (aclresult != ACLCHECK_OK)
+				aclcheck_error(aclresult, OBJECT_STORAGE_SERVER, servername);
+		}
+		else
+			aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_STORAGE_SERVER,
+						   servername);
+	}
+}
+
+/*
  * Create a storage server
  */
 ObjectAddress
@@ -262,7 +288,7 @@ CreateStorageServer(CreateStorageServerStmt *stmt)
 	ownerId = GetUserId();
 
 	/*
-	 * Check that there is no other foreign server by this name. Do nothing if
+	 * Check that there is no other storage server by this name. Do nothing if
 	 * IF NOT EXISTS was enforced.
 	 */
 	if (GetStorageServerByName(stmt->servername, true) != NULL)
@@ -334,29 +360,100 @@ CreateStorageServer(CreateStorageServerStmt *stmt)
 }
 
 /*
- * Common routine to check permission for storage-user-mapping-related DDL
- * commands.  We allow server owners to operate on any mapping, and
- * users to operate on their own mapping.
+ * Remove Storage Server
  */
-static void
-storage_user_mapping_ddl_aclcheck(Oid umuserid, Oid serverid, const char *servername)
+Oid
+RemoveStorageServer(DropStorageServerStmt *stmt)
 {
-	Oid			curuserid = GetUserId();
+	Relation	rel;
+	Oid 		serverId;
+	Oid 		srvOwnerId;
+	Oid			curuserid;
+	ScanKeyData scankey;
+	SysScanDesc sscan;
+	HeapTuple 	tuple;
 
-	if (!gp_storage_server_ownercheck(serverid, curuserid))
+	curuserid = GetUserId();
+
+	rel = table_open(StorageServerRelationId, RowExclusiveLock);
+	/*
+	 * Check that if the storage server exists. Do nothing if IF NOT
+	 * EXISTS was enforced.
+	 */
+	serverId = GetSysCacheOid1(STORAGESERVERNAME, Anum_gp_storage_server_oid,
+						  CStringGetDatum(stmt->servername));
+
+	if (!OidIsValid(serverId))
 	{
-		if (umuserid == curuserid)
+		if (stmt->missing_ok)
+		{
+			ereport(NOTICE,
+					(errcode(ERRCODE_DUPLICATE_OBJECT),
+					errmsg("storage server \"%s\" not exists, skipping",
+							stmt->servername)));
+			table_close(rel, RowExclusiveLock);
+			return InvalidOid;
+		}
+		else
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_DUPLICATE_OBJECT),
+					errmsg("storage server \"%s\" not exists",
+							stmt->servername)));
+		}
+	}
+
+	srvOwnerId = GetSysCacheOid1(STORAGESERVERNAME, Anum_gp_storage_server_srvowner,
+								 CStringGetDatum(stmt->servername));
+
+	if (!gp_storage_server_ownercheck(serverId, curuserid))
+	{
+		if (srvOwnerId == curuserid)
 		{
 			AclResult	aclresult;
 
-			aclresult = gp_storage_server_aclcheck(serverid, curuserid, ACL_USAGE);
+			aclresult = gp_storage_server_aclcheck(serverId, curuserid, ACL_USAGE);
 			if (aclresult != ACLCHECK_OK)
-				aclcheck_error(aclresult, OBJECT_STORAGE_SERVER, servername);
+				aclcheck_error(aclresult, OBJECT_STORAGE_SERVER, stmt->servername);
 		}
 		else
 			aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_STORAGE_SERVER,
-						   servername);
+						   stmt->servername);
 	}
+
+	ScanKeyInit(&scankey,
+			 	Anum_gp_storage_server_oid,
+			 	BTEqualStrategyNumber, F_OIDEQ,
+			 	ObjectIdGetDatum(serverId));
+	sscan = systable_beginscan(rel, StorageServerOidIndexId,
+							   true, NULL, 1, &scankey);
+
+	tuple = systable_getnext(sscan);
+
+	CatalogTupleDelete(rel, &tuple->t_self);
+
+	systable_endscan(sscan);
+	table_close(rel, RowExclusiveLock);
+
+	/*
+	 * Drop hook for the role being removed
+	 */
+	InvokeObjectDropHook(StorageServerRelationId, serverId, 0);
+
+	/*
+	 * Delete shared dependency references related to this role object.
+	 */
+	deleteSharedDependencyRecordsFor(StorageServerRelationId, serverId, 0);
+
+	if (Gp_role == GP_ROLE_DISPATCH)
+	{
+		CdbDispatchUtilityStatement((Node *) stmt,
+									DF_WITH_SNAPSHOT | DF_CANCEL_ON_ERROR | DF_NEED_TWO_PHASE,
+									GetAssignedOidsForDispatch(),
+									NULL);
+	}
+
+	return serverId;
 }
 
 /*

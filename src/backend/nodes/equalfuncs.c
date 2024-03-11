@@ -2156,6 +2156,15 @@ _equalCreateStorageServerStmt(const CreateStorageServerStmt *a, const CreateStor
 }
 
 static bool
+_equalDropStorageServerStmt(const DropStorageServerStmt *a, const DropStorageServerStmt *b)
+{
+	COMPARE_STRING_FIELD(servername);
+	COMPARE_SCALAR_FIELD(missing_ok);
+
+	return true;
+}
+
+static bool
 _equalCreateUserMappingStmt(const CreateUserMappingStmt *a, const CreateUserMappingStmt *b)
 {
 	COMPARE_NODE_FIELD(user);
@@ -3990,6 +3999,9 @@ equal(const void *a, const void *b)
 			break;
 		case T_CreateStorageServerStmt:
 			retval = _equalCreateStorageServerStmt(a, b);
+			break;
+		case T_DropStorageServerStmt:
+			retval = _equalDropStorageServerStmt(a, b);
 			break;
 		case T_CreateUserMappingStmt:
 			retval = _equalCreateUserMappingStmt(a, b);

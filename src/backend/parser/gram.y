@@ -301,7 +301,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 		DropCastStmt DropRoleStmt
 		DropdbStmt DropTableSpaceStmt
 		DropTransformStmt
-		DropUserMappingStmt DropStorageUserMappingStmt ExplainStmt FetchStmt
+		DropUserMappingStmt DropStorageServerStmt DropStorageUserMappingStmt ExplainStmt FetchStmt
 		GrantStmt GrantRoleStmt ImportForeignSchemaStmt IndexStmt InsertStmt
 		ListenStmt LoadStmt LockStmt NotifyStmt ExplainableStmt PreparableStmt
 		CreateFunctionStmt AlterFunctionStmt ReindexStmt RemoveAggrStmt
@@ -1485,6 +1485,7 @@ stmt:
 			| DropRoleStmt
 			| DropUserMappingStmt
 			| DropdbStmt
+			| DropStorageServerStmt
 			| DropStorageUserMappingStmt
 			| DropWarehouseStmt
 			| ExecuteStmt
@@ -8097,6 +8098,30 @@ AlterStorageUserMappingStmt:
 
 /*****************************************************************************
  *
+ *		QUERY :
+ *				DROP STORAGE SERVER name
+ *
+ ****************************************************************************/
+
+DropStorageServerStmt:
+            DROP STORAGE SERVER name
+                {
+                    DropStorageServerStmt *n = makeNode(DropStorageServerStmt);
+                    n->servername = $4;
+                    n->missing_ok = false;
+                    $$ = (Node *) n;
+                }
+            | DROP STORAGE SERVER IF_P EXISTS name
+                {
+                    DropStorageServerStmt *n = makeNode(DropStorageServerStmt);
+                    n->servername = $6;
+                    n->missing_ok = true;
+                    $$ = (Node *) n;
+                }
+            ;
+
+/*****************************************************************************
+ *
  *		QUERY:
  *             CREATE DIRECTORY TABLE relname SERVER name (...)
  *
@@ -9325,7 +9350,6 @@ drop_type_name:
 			| PUBLICATION							{ $$ = OBJECT_PUBLICATION; }
 			| SCHEMA								{ $$ = OBJECT_SCHEMA; }
 			| SERVER								{ $$ = OBJECT_FOREIGN_SERVER; }
-			| STORAGE SERVER                        { $$ = OBJECT_STORAGE_SERVER; }
 			| PROTOCOL								{ $$ = OBJECT_EXTPROTOCOL; }
 		;
 

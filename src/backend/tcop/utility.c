@@ -214,6 +214,7 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_CreateTransformStmt:
 		case T_CreateTrigStmt:
 		case T_CreateStorageServerStmt:
+		case T_DropStorageServerStmt:
 		case T_CreateUserMappingStmt:
 		case T_CreateStorageUserMappingStmt:
 		case T_CreatedbStmt:
@@ -2048,6 +2049,11 @@ ProcessUtilitySlow(ParseState *pstate,
 				address = CreateStorageServer((CreateStorageServerStmt *) parsetree);
 				break;
 
+			case T_DropStorageServerStmt:
+				RemoveStorageServer((DropStorageServerStmt *) parsetree);
+				commandCollected = true;
+				break;
+
 			case T_CreateUserMappingStmt:
 				address = CreateUserMapping((CreateUserMappingStmt *) parsetree);
 				break;
@@ -3079,6 +3085,10 @@ CreateCommandTag(Node *parsetree)
 			tag = CMDTAG_CREATE_STORAGE_SERVER;
 			break;
 
+		case T_DropStorageServerStmt:
+			tag = CMDTAG_DROP_STORAGE_SERVER;
+			break;
+
 		case T_CreateUserMappingStmt:
 			tag = CMDTAG_CREATE_USER_MAPPING;
 			break;
@@ -3967,6 +3977,7 @@ GetCommandLogLevel(Node *parsetree)
 		case T_CreateForeignServerStmt:
 		case T_AlterForeignServerStmt:
 		case T_CreateStorageServerStmt:
+		case T_DropStorageServerStmt:
 		case T_CreateUserMappingStmt:
 		case T_AlterUserMappingStmt:
 		case T_DropUserMappingStmt:

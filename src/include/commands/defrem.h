@@ -132,6 +132,7 @@ extern ObjectAddress AlterForeignDataWrapper(AlterFdwStmt *stmt);
 extern ObjectAddress CreateForeignServer(CreateForeignServerStmt *stmt);
 extern ObjectAddress AlterForeignServer(AlterForeignServerStmt *stmt);
 extern ObjectAddress CreateStorageServer(CreateStorageServerStmt *stmt);
+extern Oid RemoveStorageServer(DropStorageServerStmt *stmt);
 extern ObjectAddress CreateUserMapping(CreateUserMappingStmt *stmt);
 extern ObjectAddress AlterUserMapping(AlterUserMappingStmt *stmt);
 extern Oid	RemoveUserMapping(DropUserMappingStmt *stmt);

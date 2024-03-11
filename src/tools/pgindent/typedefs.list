@@ -575,6 +575,7 @@ DropProfileStmt
 DropReplicationSlotCmd
 DropRoleStmt
 DropStmt
+DropStorageServer
 DropStorageUserMappingStmt
 DropSubscriptionStmt
 DropTableSpaceStmt

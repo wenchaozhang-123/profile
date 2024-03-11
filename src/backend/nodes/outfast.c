@@ -661,6 +661,15 @@ _outCreateStorageServerStmt(StringInfo str, CreateStorageServerStmt *node)
 }
 
 static void
+_outDropStorageServerStmt(StringInfo str, DropStorageServerStmt *node)
+{
+	WRITE_NODE_TYPE("DROPSTORAGESERVERSTMT");
+
+	WRITE_STRING_FIELD(servername);
+	WRITE_BOOL_FIELD(missing_ok);
+}
+
+static void
 _outCreateUserMappingStmt(StringInfo str, CreateUserMappingStmt *node)
 {
 	WRITE_NODE_TYPE("CREATEUSERMAPPINGSTMT");
@@ -1731,6 +1740,9 @@ _outNode(StringInfo str, void *obj)
 				break;
 			case T_CreateStorageServerStmt:
 				_outCreateStorageServerStmt(str, obj);
+				break;
+			case T_DropStorageServerStmt:
+				_outDropStorageServerStmt(str, obj);
 				break;
 			case T_CreateFdwStmt:
 				_outCreateFdwStmt(str, obj);

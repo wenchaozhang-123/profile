@@ -2942,6 +2942,13 @@ typedef struct AlterStorageUserMappingStmt
 	List 		*options;		/* generic options to server */
 } AlterStorageUserMappingStmt;
 
+typedef struct DropStorageServerStmt
+{
+	NodeTag		type;
+	char 		*servername;	/* server name */
+	bool		missing_ok;		/* ignore missing storage server */
+} DropStorageServerStmt;
+
 typedef struct DropStorageUserMappingStmt
 {
 	NodeTag		type;

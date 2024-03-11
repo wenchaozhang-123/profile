@@ -1460,6 +1460,17 @@ _readCreateStorageServerStmt(void)
 	READ_DONE();
 }
 
+static DropStorageServerStmt *
+_readDropStorageServerStmt(void)
+{
+	READ_LOCALS(DropStorageServerStmt);
+
+	READ_STRING_FIELD(servername);
+	READ_BOOL_FIELD(missing_ok);
+
+	READ_DONE();
+}
+
 static CreateUserMappingStmt *
 _readCreateUserMappingStmt(void)
 {
@@ -2655,6 +2666,9 @@ readNodeBinary(void)
 				break;
 			case T_CreateStorageServerStmt:
 				return_value = _readCreateStorageServerStmt();
+				break;
+			case T_DropStorageServerStmt:
+				return_value = _readDropStorageServerStmt();
 				break;
 			case T_CreateFdwStmt:
 				return_value = _readCreateFdwStmt();
