@@ -86,6 +86,7 @@ AlterRoleSetStmt
 AlterRoleStmt
 AlterSeqStmt
 AlterStatsStmt
+AlterStorageServer
 AlterStorageUserMappingStmt
 AlterSubscriptionStmt
 AlterSubscriptionType

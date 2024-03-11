@@ -1460,6 +1460,17 @@ _readCreateStorageServerStmt(void)
 	READ_DONE();
 }
 
+static AlterStorageServerStmt *
+_readAlterStorageServerStmt(void)
+{
+	READ_LOCALS(AlterStorageServerStmt);
+
+	READ_STRING_FIELD(servername);
+	READ_NODE_FIELD(options);
+
+	READ_DONE();
+}
+
 static DropStorageServerStmt *
 _readDropStorageServerStmt(void)
 {
@@ -2666,6 +2677,9 @@ readNodeBinary(void)
 				break;
 			case T_CreateStorageServerStmt:
 				return_value = _readCreateStorageServerStmt();
+				break;
+			case T_AlterStorageServerStmt:
+				return_value = _readAlterStorageServerStmt();
 				break;
 			case T_DropStorageServerStmt:
 				return_value = _readDropStorageServerStmt();

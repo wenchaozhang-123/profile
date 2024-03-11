@@ -661,6 +661,15 @@ _outCreateStorageServerStmt(StringInfo str, CreateStorageServerStmt *node)
 }
 
 static void
+_outAlterStorageServerStmt(StringInfo str, AlterStorageServerStmt *node)
+{
+	WRITE_NODE_TYPE("ALTERSTORAGESERVERSTMT");
+
+	WRITE_STRING_FIELD(servername);
+	WRITE_NODE_FIELD(options);
+}
+
+static void
 _outDropStorageServerStmt(StringInfo str, DropStorageServerStmt *node)
 {
 	WRITE_NODE_TYPE("DROPSTORAGESERVERSTMT");
@@ -1740,6 +1749,9 @@ _outNode(StringInfo str, void *obj)
 				break;
 			case T_CreateStorageServerStmt:
 				_outCreateStorageServerStmt(str, obj);
+				break;
+			case T_AlterStorageServerStmt:
+				_outAlterStorageServerStmt(str, obj);
 				break;
 			case T_DropStorageServerStmt:
 				_outDropStorageServerStmt(str, obj);

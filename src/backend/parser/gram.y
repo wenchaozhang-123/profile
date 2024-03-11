@@ -282,7 +282,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 		AlterDatabaseStmt AlterDatabaseSetStmt AlterDomainStmt AlterEnumStmt
 		AlterFdwStmt AlterForeignServerStmt AlterGroupStmt
 		AlterObjectDependsStmt AlterObjectSchemaStmt AlterOwnerStmt
-		AlterOperatorStmt AlterTypeStmt AlterSeqStmt AlterSystemStmt AlterTableStmt
+		AlterOperatorStmt AlterTypeStmt AlterSeqStmt AlterStorageServerStmt AlterSystemStmt AlterTableStmt
 		AlterTblSpcStmt AlterExtensionStmt AlterExtensionContentsStmt
 		AlterCompositeTypeStmt AlterUserMappingStmt AlterStorageUserMappingStmt
 		AlterRoleStmt AlterRoleSetStmt AlterPolicyStmt AlterStatsStmt
@@ -1402,6 +1402,7 @@ stmt:
 			| AlterQueueStmt
 			| AlterResourceGroupStmt
 			| AlterSeqStmt
+			| AlterStorageServerStmt
 			| AlterSystemStmt
 			| AlterTableStmt
 			| AlterTblSpcStmt
@@ -7802,6 +7803,48 @@ CreateStorageServerStmt:
 
 /*****************************************************************************
  *
+ *		QUERY :
+ *				ALTER STORAGE SERVER name OPTIONS
+ *
+ ****************************************************************************/
+
+AlterStorageServerStmt:
+        ALTER STORAGE SERVER name alter_generic_options
+            {
+                AlterStorageServerStmt *n = makeNode(AlterStorageServerStmt);
+                n->servername = $4;
+                n->options = $5;
+                $$ = (Node *) n;
+            }
+        ;
+
+/*****************************************************************************
+ *
+ *		QUERY :
+ *				DROP STORAGE SERVER name
+ *
+ ****************************************************************************/
+
+DropStorageServerStmt:
+            DROP STORAGE SERVER name
+                {
+                    DropStorageServerStmt *n = makeNode(DropStorageServerStmt);
+                    n->servername = $4;
+                    n->missing_ok = false;
+                    $$ = (Node *) n;
+                }
+            | DROP STORAGE SERVER IF_P EXISTS name
+                {
+                    DropStorageServerStmt *n = makeNode(DropStorageServerStmt);
+                    n->servername = $6;
+                    n->missing_ok = true;
+                    $$ = (Node *) n;
+                }
+            ;
+
+
+/*****************************************************************************
+ *
  *		QUERY:
  *             CREATE FOREIGN TABLE relname (...) SERVER name (...)
  *
@@ -8092,30 +8135,6 @@ AlterStorageUserMappingStmt:
                     n->user = $6;
                     n->servername = $9;
                     n->options = $10;
-                    $$ = (Node *) n;
-                }
-            ;
-
-/*****************************************************************************
- *
- *		QUERY :
- *				DROP STORAGE SERVER name
- *
- ****************************************************************************/
-
-DropStorageServerStmt:
-            DROP STORAGE SERVER name
-                {
-                    DropStorageServerStmt *n = makeNode(DropStorageServerStmt);
-                    n->servername = $4;
-                    n->missing_ok = false;
-                    $$ = (Node *) n;
-                }
-            | DROP STORAGE SERVER IF_P EXISTS name
-                {
-                    DropStorageServerStmt *n = makeNode(DropStorageServerStmt);
-                    n->servername = $6;
-                    n->missing_ok = true;
                     $$ = (Node *) n;
                 }
             ;

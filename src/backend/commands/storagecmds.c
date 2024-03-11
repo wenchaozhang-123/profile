@@ -360,6 +360,94 @@ CreateStorageServer(CreateStorageServerStmt *stmt)
 }
 
 /*
+ * Alter Storage Server
+ */
+ObjectAddress
+AlterStorageServer(AlterStorageServerStmt *stmt)
+{
+	Relation	rel;
+	HeapTuple 	tp;
+	Datum 		repl_val[Natts_gp_storage_server];
+	bool 		repl_null[Natts_gp_storage_server];
+	bool 		repl_repl[Natts_gp_storage_server];
+	Oid			srvId;
+	Form_gp_storage_server srvForm;
+	ObjectAddress	address = {0};
+
+	rel = table_open(StorageServerRelationId, RowExclusiveLock);
+
+	tp = SearchSysCacheCopy1(STORAGESERVERNAME,
+						  		CStringGetDatum(stmt->servername));
+
+	if (!HeapTupleIsValid(tp))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("storage server \"%s\" does not exist", stmt->servername)));
+
+	srvForm = (Form_gp_storage_server) GETSTRUCT(tp);
+	srvId = srvForm->oid;
+
+	/*
+	 * Only owner or a superuser can ALTER a STORAGE SERVER.
+	 */
+	if (!gp_storage_server_ownercheck(srvId, GetUserId()))
+		aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_STORAGE_SERVER,
+				 	   stmt->servername);
+
+	memset(repl_val, 0, sizeof(repl_val));
+	memset(repl_null, false, sizeof(repl_null));
+	memset(repl_repl, false, sizeof(repl_repl));
+
+	if (stmt->options)
+	{
+		Datum		datum;
+		bool 		isnull;
+
+		/* Extract the current srvoptions */
+		datum = SysCacheGetAttr(STORAGESERVEROID,
+						  		tp,
+						  		Anum_gp_storage_server_srvoptions,
+						  		&isnull);
+		if (isnull)
+			datum = PointerGetDatum(NULL);
+
+		/* Prepare the options array */
+		datum = transformStorageGenericOptions(StorageServerRelationId,
+										 	   datum,
+										 	   stmt->options);
+		if (PointerIsValid(DatumGetPointer(datum)))
+			repl_val[Anum_gp_storage_server_srvoptions - 1] = datum;
+		else
+			repl_null[Anum_gp_storage_server_srvoptions - 1] = true;
+
+		repl_repl[Anum_gp_storage_server_srvoptions - 1] = true;
+	}
+	/* Everything looks good - update the tuple */
+	tp = heap_modify_tuple(tp, RelationGetDescr(rel),
+						   repl_val, repl_null, repl_repl);
+
+	CatalogTupleUpdate(rel, &tp->t_self, tp);
+
+	InvokeObjectPostAlterHook(StorageServerRelationId, srvId, 0);
+
+	ObjectAddressSet(address, StorageServerRelationId, srvId);
+
+	heap_freetuple(tp);
+
+	if (Gp_role == GP_ROLE_DISPATCH)
+	{
+		CdbDispatchUtilityStatement((Node *) stmt,
+									DF_WITH_SNAPSHOT | DF_CANCEL_ON_ERROR | DF_NEED_TWO_PHASE,
+									GetAssignedOidsForDispatch(),
+									NULL);
+	}
+
+	table_close(rel, RowExclusiveLock);
+
+	return address;
+}
+
+/*
  * Remove Storage Server
  */
 Oid

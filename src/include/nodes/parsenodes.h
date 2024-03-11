@@ -2866,7 +2866,7 @@ typedef struct AlterForeignServerStmt
 } AlterForeignServerStmt;
 
 /* ----------------------
- *		Create/Alter STORAGE SERVER Statements
+ *		Create/Alter/Drop STORAGE SERVER Statements
  * ----------------------
  */
 typedef struct CreateStorageServerStmt
@@ -2876,6 +2876,20 @@ typedef struct CreateStorageServerStmt
 	bool		if_not_exists;	/* just do nothing if it already exists? */
 	List		*options;		/* generic options to server */
 } CreateStorageServerStmt;
+
+typedef struct AlterStorageServerStmt
+{
+	NodeTag		type;
+	char 		*servername;	/* server name */
+	List 		*options;		/* generic options to server */
+} AlterStorageServerStmt;
+
+typedef struct DropStorageServerStmt
+{
+	NodeTag		type;
+	char 		*servername;	/* server name */
+	bool		missing_ok;		/* ignore missing storage server */
+} DropStorageServerStmt;
 
 /* ----------------------
  *		Create FOREIGN TABLE Statement
@@ -2941,13 +2955,6 @@ typedef struct AlterStorageUserMappingStmt
 	char 		*servername;	/* server name */
 	List 		*options;		/* generic options to server */
 } AlterStorageUserMappingStmt;
-
-typedef struct DropStorageServerStmt
-{
-	NodeTag		type;
-	char 		*servername;	/* server name */
-	bool		missing_ok;		/* ignore missing storage server */
-} DropStorageServerStmt;
 
 typedef struct DropStorageUserMappingStmt
 {

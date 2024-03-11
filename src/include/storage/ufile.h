@@ -9,8 +9,8 @@
  *-------------------------------------------------------------------------
  */
 
-#ifndef FILE_MANIP_H
-#define FILE_MANIP_H
+#ifndef UFILE_H
+#define UFILE_H
 
 #include "storage/relfilenode.h"
 
@@ -40,4 +40,4 @@ extern const char *UFileGetLastError(UFile *file);
 
 extern char *formatLocalFileName(RelFileNode *relFileNode, const char *fileName);
 
-#endif //FILE_MANIP_H
+#endif //UFILE_H
