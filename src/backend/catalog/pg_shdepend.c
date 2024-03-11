@@ -1297,6 +1297,8 @@ storeObjectDescription(StringInfo descs,
 				appendStringInfo(descs, _("tablespace for %s"), objdesc);
 			else if (deptype == SHARED_DEPENDENCY_PROFILE)
 				appendStringInfo(descs, _("profile of %s"), objdesc);
+			else if (deptype == SHARED_DEPENDENCY_STORAGE_SERVER)
+				appendStringInfo(descs, _("storage server of %s"), objdesc);
 			else
 				elog(ERROR, "unrecognized dependency type: %d",
 					 (int) deptype);
@@ -1765,4 +1767,27 @@ changeProfileDependency(Oid roleId, Oid newprofileId)
 				SHARED_DEPENDENCY_PROFILE);
 
 	table_close(sdepRel, RowExclusiveLock);
+}
+
+/*
+ * recordStorageServerDependency
+ *
+ * A convenient wrapper of recordSharedDependencyOn -- register the specified
+ * storage user mapping of attached to storage server.
+ */
+void
+recordStorageServerDependency(Oid umId, Oid srvId)
+{
+	ObjectAddress myself,
+		referenced;
+
+	myself.classId = StorageUserMappingRelationId;
+	myself.objectId = umId;
+	myself.objectSubId = 0;
+
+	referenced.classId = StorageServerRelationId;
+	referenced.objectId = srvId;
+	referenced.objectSubId = 0;
+
+	recordSharedDependencyOn(&myself, &referenced, SHARED_DEPENDENCY_STORAGE_SERVER);
 }

@@ -132,7 +132,7 @@ CreateDirectoryTable(CreateDirectoryTableStmt *stmt, Oid relId)
 	{
 		ereport(ERROR,
 					(errcode_for_file_access(),
-					errmsg("unable to create directory \"%s\"", dirTablePath)));
+					 errmsg("unable to create directory \"%s\"", dirTablePath)));
 	}
 	/*
 	 * Advance command counter to ensure the pg_attribute tuple is visible;

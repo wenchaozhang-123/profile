@@ -78,6 +78,10 @@ typedef enum DependencyType
  * is a profile mentioned in a role object. The referenced object must be
  * a pg_profile entry.
  *
+ * (g) a SHARED_DEPENDENCY_STORAGE_SERVER entry means that the referenced
+ * object is a storage server mentioned in a storage user mapping object.
+ * The referenced object must be a gp_storage_server entry.
+ *
  * SHARED_DEPENDENCY_INVALID is a value used as a parameter in internal
  * routines, and is not valid in the catalog itself.
  */
@@ -89,6 +93,7 @@ typedef enum SharedDependencyType
 	SHARED_DEPENDENCY_POLICY = 'r',
 	SHARED_DEPENDENCY_TABLESPACE = 't',
 	SHARED_DEPENDENCY_PROFILE = 'f',
+	SHARED_DEPENDENCY_STORAGE_SERVER = 's',
 	SHARED_DEPENDENCY_INVALID = 0
 } SharedDependencyType;
 
@@ -292,6 +297,8 @@ extern void checkDependencies(const ObjectAddresses *objects,
 extern void recordProfileDependency(Oid roleId, Oid profileId);
 
 extern void changeProfileDependency(Oid roleId, Oid profileId);
+
+extern void recordStorageServerDependency(Oid umId, Oid srvId);
 
 /* Custom object class */
 struct StringInfoData;

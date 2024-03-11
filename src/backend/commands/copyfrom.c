@@ -1252,6 +1252,11 @@ BeginCopyFromDirectoryTable(ParseState *pstate,
 		0
 	};
 
+	if (!fileName)
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("Copy from directory table file name can't be null.")));
+
 	/* Allocate workspace and zero all fields */
 	cstate = (CopyFromStateData *) palloc0(sizeof(CopyFromStateData));
 

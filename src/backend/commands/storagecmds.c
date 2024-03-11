@@ -575,9 +575,8 @@ CreateStorageUserMapping(CreateStorageUserMappingStmt *stmt)
 	HeapTuple 	tuple;
 	Oid			useId;
 	Oid 		umId;
-	ObjectAddress myself;
-	ObjectAddress referenced;
 	StorageServer *srv;
+	ObjectAddress myself;
 	RoleSpec	*role = (RoleSpec *) stmt->user;
 
 	rel = table_open(StorageUserMappingRelationId, RowExclusiveLock);
@@ -649,15 +648,11 @@ CreateStorageUserMapping(CreateStorageUserMappingStmt *stmt)
 
 	heap_freetuple(tuple);
 
-	/* Add dependency on the storage server */
 	myself.classId = StorageUserMappingRelationId;
 	myself.objectId = umId;
 	myself.objectSubId = 0;
 
-	referenced.classId = StorageServerRelationId;
-	referenced.objectId = srv->serverid;
-	referenced.objectSubId = 0;
-	recordSharedDependencyOn(&myself, &referenced, DEPENDENCY_NORMAL);
+	recordStorageServerDependency(umId, srv->serverid);
 
 	if (OidIsValid(useId))
 	{
@@ -896,7 +891,7 @@ RemoveStorageUserMapping(DropStorageUserMappingStmt *stmt)
 	/*
 	 * Delete shared dependency references related to this role object.
 	 */
-	deleteSharedDependencyRecordsFor(StorageUserMappingRelationId, useId, 0);
+	deleteSharedDependencyRecordsFor(StorageUserMappingRelationId, umId, 0);
 
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{

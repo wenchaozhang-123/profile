@@ -61,7 +61,7 @@ DirectoryTableDropStorage(Relation rel)
 
 	dirTable = GetDirectoryTable(RelationGetRelid(rel));
 
-	filePath = psprintf("/%s", dirTable->location);
+	filePath = psprintf("%s", dirTable->location);
 
 	/* Add the relation to the list of stuff to delete at commit */
 	pending = (PendingRelDeleteFile *)

@@ -875,7 +875,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 
 	SCATTER SEGMENT SEGMENTS SPLIT SUBPARTITION
 
-    TAG
+	TAG
 
 	TASK SCHEDULE
 
@@ -4675,10 +4675,10 @@ copy_opt_item:
 				{
 					$$ = makeDefElem("skip_foreign_partitions", (Node *)makeInteger(true), @1);
 				}
-            | TAG Sconst
-                {
-                    $$ = makeDefElem("tag", (Node *)makeString($2), @1);
-                }
+			| TAG Sconst
+				{
+					$$ = makeDefElem("tag", (Node *)makeString($2), @1);
+				}
 		;
 
 /* The following exist for backward compatibility with very old versions */
@@ -7168,12 +7168,12 @@ CreateTableSpaceStmt: CREATE TABLESPACE name OptTableSpaceOwner LOCATION Sconst 
 					n->location = $6;
 					n->options = $7;
 
-                    if ($8 != NULL)
-                    {
-                        n->options = lappend(n->options, $8);
-                        n->options = lappend(n->options,
-                                                            makeDefElem("path", (Node *)makeString($6), @6));
-                    }
+					if ($8 != NULL)
+					{
+						n->options = lappend(n->options, $8);
+						n->options = lappend(n->options,
+									makeDefElem("path", (Node *)makeString($6), @6));
+					}
 					$$ = (Node *) n;
 				}
 		;
@@ -7826,21 +7826,21 @@ AlterStorageServerStmt:
  ****************************************************************************/
 
 DropStorageServerStmt:
-            DROP STORAGE SERVER name
-                {
-                    DropStorageServerStmt *n = makeNode(DropStorageServerStmt);
-                    n->servername = $4;
-                    n->missing_ok = false;
-                    $$ = (Node *) n;
-                }
-            | DROP STORAGE SERVER IF_P EXISTS name
-                {
-                    DropStorageServerStmt *n = makeNode(DropStorageServerStmt);
-                    n->servername = $6;
-                    n->missing_ok = true;
-                    $$ = (Node *) n;
-                }
-            ;
+        DROP STORAGE SERVER name
+            {
+                DropStorageServerStmt *n = makeNode(DropStorageServerStmt);
+                n->servername = $4;
+                n->missing_ok = false;
+                $$ = (Node *) n;
+            }
+        | DROP STORAGE SERVER IF_P EXISTS name
+            {
+                DropStorageServerStmt *n = makeNode(DropStorageServerStmt);
+                n->servername = $6;
+                n->missing_ok = true;
+                $$ = (Node *) n;
+            }
+        ;
 
 
 /*****************************************************************************
@@ -9333,7 +9333,7 @@ object_type_any_name:
 			| FOREIGN TABLE							{ $$ = OBJECT_FOREIGN_TABLE; }
 			| EXTERNAL TABLE						{ $$ = OBJECT_FOREIGN_TABLE; }
 			| EXTERNAL WEB TABLE					{ $$ = OBJECT_FOREIGN_TABLE; }
-			| DIRECTORY TABLE                       { $$ = OBJECT_DIRECTORY_TABLE; }
+			| DIRECTORY TABLE					{ $$ = OBJECT_DIRECTORY_TABLE; }
 			| COLLATION								{ $$ = OBJECT_COLLATION; }
 			| CONVERSION_P							{ $$ = OBJECT_CONVERSION; }
 			| STATISTICS							{ $$ = OBJECT_STATISTIC_EXT; }
