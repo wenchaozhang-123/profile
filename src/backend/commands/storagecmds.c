@@ -460,6 +460,8 @@ RemoveStorageServer(DropStorageServerStmt *stmt)
 	ScanKeyData scankey;
 	SysScanDesc sscan;
 	HeapTuple 	tuple;
+	char		*detail;
+	char		*detail_log;
 
 	curuserid = GetUserId();
 
@@ -517,6 +519,22 @@ RemoveStorageServer(DropStorageServerStmt *stmt)
 							   true, NULL, 1, &scankey);
 
 	tuple = systable_getnext(sscan);
+
+	/*
+	 * Lock the storage server, so nobody can add dependencies to her while we drop
+	 * her. We keep the lock until the end of transaction.
+	 */
+	LockSharedObject(StorageServerRelationId, serverId, 0, AccessExclusiveLock);
+
+	/* Check for pg_shdepend entries depending on this profile */
+	if (checkSharedDependencies(StorageServerRelationId, serverId,
+								&detail, &detail_log))
+		ereport(ERROR,
+				(errcode(ERRCODE_DEPENDENT_OBJECTS_STILL_EXIST),
+					errmsg("storage server \"%s\" cannot be dropped because some objects depend on it",
+						   stmt->servername),
+					errdetail_internal("%s", detail),
+					errdetail_log("%s", detail_log)));
 
 	CatalogTupleDelete(rel, &tuple->t_self);
 
