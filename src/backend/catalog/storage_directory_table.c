@@ -56,8 +56,8 @@ DirectoryTableDropStorage(Relation rel)
 	DirectoryTable *dirTable;
 	PendingRelDeleteFile *pending;
 
-	if (Gp_role != GP_ROLE_DISPATCH)
-		return;
+//	if (Gp_role != GP_ROLE_DISPATCH)
+//		return;
 
 	dirTable = GetDirectoryTable(RelationGetRelid(rel));
 

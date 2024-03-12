@@ -19,6 +19,7 @@
 
 #include "catalog/pg_tablespace.h"
 #include "cdb/cdbvars.h"
+#include "commands/tablespace.h"
 #include "common/relpath.h"
 #include "storage/ufile.h"
 #include "storage/fd.h"
@@ -212,16 +213,113 @@ localFileSize(UFile *file)
 	return FileSize(localFile->file);
 }
 
+static bool
+destory_local_file_directories(const char* directoryName)
+{
+	DIR		   *dirdesc;
+	struct dirent *de;
+	char	   *subfile;
+	struct stat st;
+
+	//Assert(LWLockHeldByMe(DirectoryTableLock));
+
+	elog(DEBUG5, "destory_local_file_directories for directory %s",
+		 directoryName);
+
+	dirdesc = AllocateDir(directoryName);
+	if (dirdesc == NULL)
+	{
+		if (errno == ENOENT)
+		{
+			ereport(ERROR,
+					(errcode_for_file_access(),
+					 errmsg("could not open directory \"%s\": %m",
+							directoryName)));
+			/* The symlink might still exist, so go try to remove it */
+			return false;
+		}
+	}
+
+	while ((de = ReadDir(dirdesc, directoryName)) != NULL)
+	{
+		if (strcmp(de->d_name, ".") == 0 ||
+			strcmp(de->d_name, "..") == 0)
+			continue;
+
+		subfile = psprintf("%s/%s", directoryName, de->d_name);
+
+		if (stat(subfile, &st) == 0 &&
+			S_ISDIR(st.st_mode))
+		{
+			/* remove directory and file recursively */
+			if (!destory_local_file_directories(subfile))
+				ereport(WARNING,
+							(errcode_for_file_access(),
+							 errmsg("directories for directory table \"%s\" could not be removed: %m",
+								   subfile),
+							 errhint("You can remove the directories manually if necessary.")));
+			FreeDir(dirdesc);
+			pfree(subfile);
+			return false;
+		}
+		else
+		{
+			/* remove file */
+			if (unlink(subfile) < 0)
+				ereport(ERROR,
+							(errcode_for_file_access(),
+							 errmsg("could not remove files \"%s\": %m",
+								   subfile)));
+		}
+
+		pfree(subfile);
+	}
+
+	FreeDir(dirdesc);
+
+	/* remove directory */
+	if (rmdir(directoryName) < 0)
+	{
+		ereport(ERROR,
+				(errcode_for_file_access(),
+				 errmsg("could not remove directory \"%s\": %m",
+						directoryName)));
+		return false;
+	}
+
+	return true;
+}
+
 static void
 localFileUnlink(const char *fileName)
 {
-	if (unlink(fileName) < 0)
+	struct stat st;
+
+	//Assert(LWLockHeldByMe(TablespaceCreateLock));
+
+	if (stat(fileName, &st) == 0 &&
+		S_ISDIR(st.st_mode))
 	{
-		if (errno != ENOENT)
+		/* remove directory and file recursively */
+		if (!destory_local_file_directories(fileName))
 			ereport(WARNING,
-					(errcode_for_file_access(),
-						errmsg("could not remove file \"%s\": %m", fileName)));
+						(errcode_for_file_access(),
+						 errmsg("directories for directory table \"%s\" could not be removed: %m",
+							   fileName),
+						 errhint("You can remove the directories manually if necessary.")));
 	}
+	else
+	{
+		/* remove file */
+		if (unlink(fileName) < 0)
+		{
+			if (errno != ENOENT)
+				ereport(WARNING,
+							(errcode_for_file_access(),
+							 errmsg("could not remove file \"%s\": %m", fileName)));
+		}
+	}
+
 }
 
 static bool
