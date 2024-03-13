@@ -1276,6 +1276,11 @@ BeginCopyFromDirectoryTable(ParseState *pstate,
 	/* Extract options from the statement node tree */
 	ProcessCopyOptions(pstate, &cstate->opts, true, options, rel->rd_id);
 
+	if (Gp_role == GP_ROLE_DISPATCH && !cstate->opts.binary)
+		ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("Only support copy binary from directory table.")));
+
 	cstate->copy_src = COPY_FILE;	/* default */
 
 	/*
