@@ -41,6 +41,7 @@
 #include "commands/progress.h"
 #include "commands/tablespace.h"
 #include "commands/trigger.h"
+#include "common/base64.h"
 #include "common/cryptohash.h"
 #include "common/md5.h"
 #include "executor/execPartition.h"
@@ -743,6 +744,18 @@ formDirTableSlot(CopyFromState cstate,
 	List	   *attnumlist = cstate->qd_attnumlist;
 	pg_time_t	stampTime = (pg_time_t) time(NULL);
 	char		lastModified[128];
+	char	*encode_file;
+	int		encode_file_len;
+
+	encode_file_len = pg_b64_enc_len(buf->len);
+	encode_file = (char *) palloc0(encode_file_len + 1);
+
+	encode_file_len = pg_b64_encode(buf->data, buf->len, encode_file, encode_file_len);
+	if (encode_file_len < 0)
+	{
+		elog(ERROR, "base 64 encode failed in copy from directory table");
+	}
+	encode_file[encode_file_len] = '\0';
 
 	pg_strftime(lastModified, sizeof(lastModified),
 				"%Y-%m-%d %H:%M:%S",
@@ -761,7 +774,7 @@ formDirTableSlot(CopyFromState cstate,
 	field[4] = tags; /* tags */
 	if (tags == NULL)
 		nulls[4] = true;
-	field[5] = buf->data;
+	field[5] = encode_file;
 
 	/* Loop to read the user attributes on the line. */
 	foreach(cur, attnumlist)
@@ -1035,9 +1048,11 @@ CopyFromDirectoryTable(CopyFromState cstate)
 		CommandId	mycid = GetCurrentCommandId(true);
 		MemoryContext oldcontext = CurrentMemoryContext;
 		char		errorMessage[256];
-		UFile    *file;
+		UFile		*file;
 		char 		*file_buf;
 		int			i;
+		char 		*decode_file;
+		int			decode_file_len;
 
 		econtext = GetPerTupleExprContext(estate);
 
@@ -1062,8 +1077,16 @@ CopyFromDirectoryTable(CopyFromState cstate)
 			FileAddCreatePendingEntry(cstate->rel, dirTable->spcId, orgiFileName);
 
 			file_buf = TextDatumGetCString(myslot->tts_values[5]);
+			decode_file_len = strlen(file_buf);
+			decode_file = (char *) palloc0(decode_file_len);
+			decode_file_len = pg_b64_decode(file_buf, strlen(file_buf), decode_file, decode_file_len);
 
-			if (UFileWrite(file, file_buf, strlen(file_buf)) == -1)
+			if (decode_file_len < 0)
+			{
+				elog(ERROR, "can not decode in copy from directory table, b64_msg is empty");
+			}
+
+			if (UFileWrite(file, decode_file, decode_file_len) == -1)
 				ereport(ERROR,
 							(errcode(ERRCODE_INTERNAL_ERROR),
 							 errmsg("failed to write file \"%s\": %s", orgiFileName, UFileGetLastError(file))));
