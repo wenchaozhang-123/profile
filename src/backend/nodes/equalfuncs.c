@@ -3401,7 +3401,6 @@ _equalCreateDirectoryTableStmt(const CreateDirectoryTableStmt *a, const CreateDi
 		return false;
 
 	COMPARE_STRING_FIELD(tablespacename);
-	COMPARE_SCALAR_FIELD(relnode);
 
 	return true;
 }

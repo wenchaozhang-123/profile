@@ -3348,7 +3348,6 @@ typedef struct CreateDirectoryTableStmt
 {
 	CreateStmt	base;
 	char	   *tablespacename;
-	RelFileNodeId relnode;
 } CreateDirectoryTableStmt;
 
 

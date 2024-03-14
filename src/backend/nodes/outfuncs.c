@@ -4029,7 +4029,6 @@ _outCreateDirectoryTableStmt(StringInfo str, const CreateDirectoryTableStmt *nod
 
 	_outCreateStmtInfo(str, (const CreateStmt *) node);
 	WRITE_STRING_FIELD(tablespacename);
-	WRITE_UINT64_FIELD(relnode);
 }
 
 #include "outfuncs_common.c"
