@@ -11,12 +11,18 @@
 
 #include "postgres.h"
 
+#include "access/heapam.h"
 #include "access/parallel.h"
+#include "access/relscan.h"
+#include "access/table.h"
+#include "access/tableam.h"
 #include "access/xact.h"
 #include "catalog/pg_directory_table.h"
+#include "catalog/pg_tablespace.h"
 #include "catalog/storage_directory_table.h"
 #include "storage/smgr.h"
 #include "storage/ufile.h"
+#include "utils/acl.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
 #include "cdb/cdbvars.h"
@@ -55,11 +61,56 @@ DirectoryTableDropStorage(Relation rel)
 	char *filePath;
 	DirectoryTable *dirTable;
 	PendingRelDeleteFile *pending;
+	TableScanDesc scandesc;
+	Relation	spcrel;
+	HeapTuple	tuple;
+	Form_pg_tablespace spcform;
+	ScanKeyData entry[1];
+	Oid			tablespaceoid;
+	char 	   *tablespace_name;
 
 //	if (Gp_role != GP_ROLE_DISPATCH)
 //		return;
 
 	dirTable = GetDirectoryTable(RelationGetRelid(rel));
+
+	/*
+	 * Find the tablespace by spaceId
+	 */
+	spcrel = table_open(TableSpaceRelationId, RowExclusiveLock);
+
+	ScanKeyInit(&entry[0],
+				Anum_pg_tablespace_oid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(dirTable->spcId));
+	scandesc = table_beginscan_catalog(spcrel, 1, entry);
+	tuple = heap_getnext(scandesc, ForwardScanDirection);
+
+	if (!HeapTupleIsValid(tuple))
+	{
+		ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_OBJECT),
+					 errmsg("tablespace \"%d\" does not exist",
+							dirTable->spcId)));
+	}
+
+	spcform = (Form_pg_tablespace) GETSTRUCT(tuple);
+	tablespaceoid = spcform->oid;
+	tablespace_name = pstrdup(NameStr(((Form_pg_tablespace) GETSTRUCT(tuple))->spcname));
+
+	/* Must be tablespace owner */
+	if (!pg_tablespace_ownercheck(tablespaceoid, GetUserId()))
+		aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_TABLESPACE,
+					   tablespace_name);
+
+	/* Disallow drop of the standard tablespaces, even by superuser */
+	if (tablespaceoid == GLOBALTABLESPACE_OID ||
+		tablespaceoid == DEFAULTTABLESPACE_OID)
+		aclcheck_error(ACLCHECK_NO_PRIV, OBJECT_TABLESPACE,
+					   tablespace_name);
+
+	table_endscan(scandesc);
+	table_close(spcrel, RowExclusiveLock);
 
 	filePath = psprintf("%s", dirTable->location);
 
