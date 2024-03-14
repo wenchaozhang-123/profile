@@ -124,9 +124,19 @@ CreateDirectoryTable(CreateDirectoryTableStmt *stmt, Oid relId)
 	bool 		nulls[Natts_pg_directory_table];
 	HeapTuple	tuple;
 	char 		*dirTablePath;
+	Form_pg_class pg_class_tuple;
+	HeapTuple	class_tuple;
 	Oid 		spcId = chooseTableSpace(stmt);
 
-	dirTablePath = getDirectoryTablePath(spcId, MyDatabaseId, stmt->relnode);
+	class_tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(relId));
+	if (!HeapTupleIsValid(class_tuple))
+		elog(ERROR, "cache lookup failed for relation %u", relId);
+	pg_class_tuple = (Form_pg_class) GETSTRUCT(class_tuple);
+
+	//TODO local need oid while dfs need relfilenode, should be compatible
+	dirTablePath = getDirectoryTablePath(spcId, MyDatabaseId, pg_class_tuple->relfilenode);
+
+	ReleaseSysCache(class_tuple);
 
 	if (mkdir(dirTablePath, S_IRWXU) < 0)
 	{

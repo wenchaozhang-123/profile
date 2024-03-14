@@ -1094,30 +1094,6 @@ CopyFromDirectoryTable(CopyFromState cstate)
 			cstate->rel->rd_att = CreateTupleDescCopy(tupdesc);
 			cstate->rel->rd_att->tdrefcount = 1;	/* mark as refcounted */
 
-//		for (;;)
-//		{
-//			CHECK_FOR_INTERRUPTS();
-//
-//			bytesRead = CopyReadBinaryData(cstate, buffer, DIR_FILE_BUFF_SIZE);
-//
-//			if (bytesRead > 0)
-//			{
-//				bytesWrite = UFileWrite(file, buffer, bytesRead);
-//				if (bytesWrite == -1)
-//					ereport(ERROR,
-//								(errcode(ERRCODE_INTERNAL_ERROR),
-//								 errmsg("failed to write file \"%s\": %s", orgiFileName, UFileGetLastError(file))));
-//
-//				fileSize += bytesWrite;
-//			}
-//
-//			if (bytesRead != DIR_FILE_BUFF_SIZE)
-//			{
-//				Assert(cstate->raw_reached_eof == true);
-//				break;
-//			}
-//		}
-
 			/*
 			 * Reset the per-tuple exprcontext. We do this after every tuple, to
 			 * clean-up after expression evaluations etc.
