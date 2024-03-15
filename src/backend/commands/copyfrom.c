@@ -756,6 +756,10 @@ formDirTableSlot(CopyFromState cstate,
 		elog(ERROR, "base 64 encode failed in copy from directory table");
 	}
 	encode_file[encode_file_len] = '\0';
+	if (buf->data)
+	{
+		pfree(buf->data);
+	}
 
 	pg_strftime(lastModified, sizeof(lastModified),
 				"%Y-%m-%d %H:%M:%S",
@@ -1037,8 +1041,6 @@ CopyFromDirectoryTable(CopyFromState cstate)
 
 			processed = total_completed_from_qes;
 		}
-
-		pfree(buf.data);
 	}
 	else if (cstate->dispatch_mode == COPY_EXECUTOR)
 	{
@@ -1058,42 +1060,6 @@ CopyFromDirectoryTable(CopyFromState cstate)
 
 		if (NextCopyFromExecute(cstate, econtext, myslot->tts_values, myslot->tts_isnull))
 		{
-			if (UFileExists(dirTable->spcId, orgiFileName))
-				ereport(ERROR,
-							(errcode(ERRCODE_DUPLICATE_OBJECT),
-						 	 errmsg("file \"%s\" already exists", relaFileName)));
-
-			file = UFileOpen(dirTable->spcId,
-						 	orgiFileName,
-						 	O_CREAT | O_WRONLY,
-						 	errorMessage,
-						 	sizeof(errorMessage));
-			if (file == NULL)
-				ereport(ERROR,
-							(errcode(ERRCODE_INTERNAL_ERROR),
-						 	 errmsg("failed to open file \"%s\": %s", orgiFileName, errorMessage)));
-
-			/* Delete uploaded file when the transaction fails */
-			FileAddCreatePendingEntry(cstate->rel, dirTable->spcId, orgiFileName);
-
-			file_buf = TextDatumGetCString(myslot->tts_values[5]);
-			decode_file_len = strlen(file_buf);
-			decode_file = (char *) palloc0(decode_file_len);
-			decode_file_len = pg_b64_decode(file_buf, strlen(file_buf), decode_file, decode_file_len);
-
-			if (decode_file_len < 0)
-			{
-				elog(ERROR, "can not decode in copy from directory table, b64_msg is empty");
-			}
-
-			if (UFileWrite(file, decode_file, decode_file_len) == -1)
-				ereport(ERROR,
-							(errcode(ERRCODE_INTERNAL_ERROR),
-							 errmsg("failed to write file \"%s\": %s", orgiFileName, UFileGetLastError(file))));
-
-			fileSize = strlen(file_buf);
-
-			pfree(tupdesc);
 			tupdesc = CreateTemplateTupleDesc(DIRECTORY_TABLE_COLUMNS);
 			TupleDescInitEntry(tupdesc, (AttrNumber) 1, "relative_path",
 							   TEXTOID, -1, 0);
@@ -1166,6 +1132,48 @@ CopyFromDirectoryTable(CopyFromState cstate)
 								 recheckIndexes, cstate->transition_capture);
 
 			list_free(recheckIndexes);
+			pfree(tupdesc);
+
+//			if (UFileExists(dirTable->spcId, orgiFileName))
+//				ereport(ERROR,
+//							(errcode(ERRCODE_DUPLICATE_OBJECT),
+//						 	 errmsg("file \"%s\" already exists", relaFileName)));
+
+			if (UFileExists(dirTable->spcId, orgiFileName))
+			{
+				UFileUnlink(dirTable->spcId, orgiFileName);
+			}
+
+			file = UFileOpen(dirTable->spcId,
+						 	orgiFileName,
+						 	O_CREAT | O_WRONLY,
+						 	errorMessage,
+						 	sizeof(errorMessage));
+			if (file == NULL)
+				ereport(ERROR,
+							(errcode(ERRCODE_INTERNAL_ERROR),
+						 	 errmsg("failed to open file \"%s\": %s", orgiFileName, errorMessage)));
+
+			/* Delete uploaded file when the transaction fails */
+			FileAddCreatePendingEntry(cstate->rel, dirTable->spcId, orgiFileName);
+
+			file_buf = TextDatumGetCString(myslot->tts_values[5]);
+			decode_file_len = strlen(file_buf);
+			decode_file = (char *) palloc0(decode_file_len);
+			decode_file_len = pg_b64_decode(file_buf, strlen(file_buf), decode_file, decode_file_len);
+
+			if (decode_file_len < 0)
+			{
+				elog(ERROR, "can not decode in copy from directory table, b64_msg is empty");
+			}
+
+			if (UFileWrite(file, decode_file, decode_file_len) == -1)
+				ereport(ERROR,
+							(errcode(ERRCODE_INTERNAL_ERROR),
+							 errmsg("failed to write file \"%s\": %s", orgiFileName, UFileGetLastError(file))));
+
+			fileSize = strlen(file_buf);
+
 			pfree(tupdesc);
 
 			/*
