@@ -1060,6 +1060,9 @@ CopyFromDirectoryTable(CopyFromState cstate)
 
 		if (NextCopyFromExecute(cstate, econtext, myslot->tts_values, myslot->tts_isnull))
 		{
+			if (tupdesc)
+				pfree(tupdesc);
+
 			tupdesc = CreateTemplateTupleDesc(DIRECTORY_TABLE_COLUMNS);
 			TupleDescInitEntry(tupdesc, (AttrNumber) 1, "relative_path",
 							   TEXTOID, -1, 0);
@@ -1095,9 +1098,6 @@ CopyFromDirectoryTable(CopyFromState cstate)
 			 */
 			MemoryContextSwitchTo(GetPerTupleMemoryContext(estate));
 
-			ExecClearTuple(myslot);
-			ExecClearTuple(tmpslot);
-
 			/*
 			 * NextCopyFromExecute set up estate->es_result_relation_info,
 			 * and stored the tuple in the correct slot.
@@ -1132,7 +1132,9 @@ CopyFromDirectoryTable(CopyFromState cstate)
 								 recheckIndexes, cstate->transition_capture);
 
 			list_free(recheckIndexes);
-			pfree(tupdesc);
+
+			if (tupdesc)
+				pfree(tupdesc);
 
 //			if (UFileExists(dirTable->spcId, orgiFileName))
 //				ereport(ERROR,
@@ -1174,7 +1176,8 @@ CopyFromDirectoryTable(CopyFromState cstate)
 
 			fileSize = strlen(file_buf);
 
-			pfree(tupdesc);
+			ExecClearTuple(myslot);
+			ExecClearTuple(tmpslot);
 
 			/*
 			 * We count only tuples not suppressed by a BEFORE INSERT trigger

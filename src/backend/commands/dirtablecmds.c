@@ -360,7 +360,7 @@ remove_file_segment(PG_FUNCTION_ARGS)
 	relativePath = PG_GETARG_CSTRING(1);
 
 	dirTable = GetDirectoryTable(relId);
-	relation = table_open(relId, RowExclusiveLock);
+	relation = table_open(relId, AccessExclusiveLock);
 	indexOids = RelationGetIndexList(relation);
 	Assert(list_length(indexOids) == 1);
 
@@ -383,7 +383,7 @@ remove_file_segment(PG_FUNCTION_ARGS)
 	systable_endscan(scan);
 	list_free(indexOids);
 
-	table_close(relation, RowExclusiveLock);
+	table_close(relation, NoLock);
 
 	PG_RETURN_BOOL(exist);
 }
@@ -411,7 +411,7 @@ remove_file(PG_FUNCTION_ARGS)
 				 errmsg("file path cannot be null")));
 	relativePath = PG_GETARG_CSTRING(1);
 
-	relation = table_open(relId, RowExclusiveLock);
+	relation = table_open(relId, AccessExclusiveLock);
 
 	if (Gp_role != GP_ROLE_DISPATCH)
 		ereport(ERROR,
@@ -453,7 +453,7 @@ remove_file(PG_FUNCTION_ARGS)
 
 	cdbdisp_clearCdbPgResults(&cdbPgresults);
 
-	table_close(relation, RowExclusiveLock);
+	table_close(relation, NoLock);
 
 	PG_RETURN_BOOL(numDeletes > 0);
 }
