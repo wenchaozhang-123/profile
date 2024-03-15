@@ -138,6 +138,11 @@ CreateDirectoryTable(CreateDirectoryTableStmt *stmt, Oid relId)
 
 	ReleaseSysCache(class_tuple);
 
+	/*
+	 * Acquire DirectoryTableLock to ensure that no DROP DIRECTORY TABLE
+	 * or CREATE DIRECTORY TABLE is running concurrently.
+	 */
+	LWLockAcquire(DirectoryTableLock, LW_EXCLUSIVE);
 	if (mkdir(dirTablePath, S_IRWXU) < 0)
 	{
 		ereport(ERROR,
@@ -168,6 +173,8 @@ CreateDirectoryTable(CreateDirectoryTableStmt *stmt, Oid relId)
 	heap_freetuple(tuple);
 
 	table_close(dirRelation, RowExclusiveLock);
+
+	LWLockRelease(DirectoryTableLock);
 }
 
 static Datum

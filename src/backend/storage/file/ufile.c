@@ -23,6 +23,7 @@
 #include "common/relpath.h"
 #include "storage/ufile.h"
 #include "storage/fd.h"
+#include "storage/lwlock.h"
 #include "storage/relfilenode.h"
 #include "utils/elog.h"
 #include "utils/wait_event.h"
@@ -221,7 +222,7 @@ destory_local_file_directories(const char* directoryName)
 	char	   *subfile;
 	struct stat st;
 
-	//Assert(LWLockHeldByMe(DirectoryTableLock));
+	Assert(LWLockHeldByMe(DirectoryTableLock));
 
 	elog(DEBUG5, "destory_local_file_directories for directory %s",
 		 directoryName);
@@ -252,15 +253,20 @@ destory_local_file_directories(const char* directoryName)
 			S_ISDIR(st.st_mode))
 		{
 			/* remove directory and file recursively */
+
 			if (!destory_local_file_directories(subfile))
+			{
 				ereport(WARNING,
 							(errcode_for_file_access(),
 							 errmsg("directories for directory table \"%s\" could not be removed: %m",
-								   subfile),
+			   						subfile),
 							 errhint("You can remove the directories manually if necessary.")));
-			FreeDir(dirdesc);
-			pfree(subfile);
-			return false;
+
+				FreeDir(dirdesc);
+				pfree(subfile);
+
+				return false;
+			}
 		}
 		else
 		{
@@ -284,7 +290,6 @@ destory_local_file_directories(const char* directoryName)
 				(errcode_for_file_access(),
 				 errmsg("could not remove directory \"%s\": %m",
 						directoryName)));
-		return false;
 	}
 
 	return true;
@@ -295,8 +300,7 @@ localFileUnlink(const char *fileName)
 {
 	struct stat st;
 
-	//Assert(LWLockHeldByMe(TablespaceCreateLock));
-
+	LWLockAcquire(DirectoryTableLock, LW_EXCLUSIVE);
 	if (stat(fileName, &st) == 0 &&
 		S_ISDIR(st.st_mode))
 	{
@@ -307,9 +311,11 @@ localFileUnlink(const char *fileName)
 						 errmsg("directories for directory table \"%s\" could not be removed: %m",
 							   fileName),
 						 errhint("You can remove the directories manually if necessary.")));
+		LWLockRelease(DirectoryTableLock);
 	}
 	else
 	{
+		LWLockRelease(DirectoryTableLock);
 		/* remove file */
 		if (unlink(fileName) < 0)
 		{
