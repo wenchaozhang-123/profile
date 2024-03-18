@@ -17,6 +17,8 @@
 #include "catalog/indexing.h"
 #include "parser/parser.h"
 #include "catalog/pg_directory_table.h"
+#include "catalog/pg_tablespace.h"
+#include "storage/ufile.h"
 #include "utils/builtins.h"
 #include "utils/syscache.h"
 
@@ -33,6 +35,53 @@ static const DirTableColumnDesc dirTableColumns[] = {
 	{"md5", "text"},
 	{"tag", "text"}
 };
+
+void
+GetTablespaceFileHandler(Oid spcId)
+{
+	HeapTuple tuple;
+	Datum datum;
+	bool isNull;
+	Form_pg_tablespace 		tblspcForm;
+	Oid fileHandlerOid;
+
+	GetTablespaceFileHandler(spcId);
+	tuple = SearchSysCache1(TABLESPACEOID, ObjectIdGetDatum(spcId));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for table space %u", spcId);
+
+
+	tblspcForm = (Form_pg_tablespace) GETSTRUCT(tuple);
+	datum = SysCacheGetAttr(TABLESPACEOID,
+							tuple,
+							Anum_pg_tablespace_spcfilehandler,
+							&isNull);
+	if (!isNull)
+	{
+		fileHandlerOid = DatumGetObjectId(datum);
+		datum = OidFunctionCall0(fileHandlerOid);
+		currentFileAm = (FileAm *) DatumGetPointer(datum);
+		if (currentFileAm == NULL)
+			elog(ERROR, "table space file handler %u did not return a FileAm struct",
+				 		fileHandlerOid);
+	}
+	else
+	{
+		currentFileAm = &localFileAm;
+	}
+
+	ReleaseSysCache(tuple);
+
+	Assert(currentFileAm != NULL);
+	Assert(currentFileAm->close != NULL);
+	Assert(currentFileAm->read != NULL);
+	Assert(currentFileAm->write != NULL);
+	Assert(currentFileAm->size != NULL);
+	Assert(currentFileAm->name != NULL);
+	Assert(currentFileAm->getLastError != NULL);
+
+	return;
+}
 
 /*
  * GetDirectoryTable - look up the directory table definition by relId.

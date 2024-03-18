@@ -14,10 +14,21 @@
 
 #include "storage/relfilenode.h"
 
-struct FileAm;
+struct UFile;
+
+typedef struct FileAm
+{
+	void (*close) (struct UFile *file);
+	int (*read) (struct UFile *file, char *buffer, int amount);
+	int (*write) (struct UFile *file, char *buffer, int amount);
+	int64_t (*size) (struct UFile *file);
+	const char *(*name) (struct UFile *file);
+	const char *(*getLastError) (void);
+} FileAm;
+
 typedef struct UFile
 {
-	struct FileAm *methods;
+	FileAm *methods;
 } UFile;
 
 extern UFile *UFileOpen(Oid spcId,
@@ -39,5 +50,8 @@ extern bool UFileExists(Oid spcId, const char *fileName);
 extern const char *UFileGetLastError(UFile *file);
 
 extern char *formatLocalFileName(RelFileNode *relFileNode, const char *fileName);
+
+extern struct FileAm localFileAm;
+extern struct FileAm *currentFileAm;
 
 #endif //UFILE_H

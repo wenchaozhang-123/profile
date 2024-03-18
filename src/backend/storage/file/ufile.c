@@ -30,19 +30,9 @@
 
 #define UFILE_ERROR_SIZE	1024
 
-typedef struct FileAm
-{
-	void (*close) (UFile *file);
-	int (*read) (UFile *file, char *buffer, int amount);
-	int (*write) (UFile *file, char *buffer, int amount);
-	int64_t (*size) (UFile *file);
-	const char *(*name) (UFile *file);
-	const char *(*getLastError) (void);
-} FileAm;
-
 typedef struct LocalFile
 {
-	struct FileAm * methods;
+	FileAm * methods;
 	File file;
 	off_t offset;
 } LocalFile;
@@ -62,7 +52,7 @@ static const char *localGetLastError(void);
 
 static char localFileErrorStr[UFILE_ERROR_SIZE];
 
-static FileAm localFileAm = {
+struct FileAm localFileAm = {
 	.close = localFileClose,
 	.read = localFileRead,
 	.write = localFileWrite,
@@ -72,7 +62,7 @@ static FileAm localFileAm = {
 };
 
 //TODO
-//static FileAm *currentFileAm = &localFileAm;
+struct FileAm *currentFileAm = &localFileAm;
 
 static UFile *
 UFileOpenInternal(Oid spcId,

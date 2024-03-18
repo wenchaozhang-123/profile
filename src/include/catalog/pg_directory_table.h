@@ -59,6 +59,7 @@ typedef struct DirectoryTable
 
 #define DIRECTORY_TABLE_TAG_COLUMN_ATTNUM	5
 
+extern void GetTablespaceFileHandler(Oid handlerOid);
 extern DirectoryTable *GetDirectoryTable(Oid relId);
 extern bool RelationIsDirectoryTable(Oid relId);
 extern List *GetDirectoryTableBuiltinColumns(void);

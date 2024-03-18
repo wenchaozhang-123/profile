@@ -643,6 +643,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 %type <boolean> constraints_set_mode
 %type <str>		OptTableSpace OptConsTableSpace
 %type <defelt>  OptServer
+%type <defelt>  OptFileHandler
 
 %type <rolespec> OptTableSpaceOwner
 %type <node>    DistributedBy OptDistributedBy 
@@ -7160,7 +7161,7 @@ opt_procedural:
  *
  *****************************************************************************/
 
-CreateTableSpaceStmt: CREATE TABLESPACE name OptTableSpaceOwner LOCATION Sconst opt_reloptions OptServer
+CreateTableSpaceStmt: CREATE TABLESPACE name OptTableSpaceOwner LOCATION Sconst opt_reloptions OptServer OptFileHandler
 				{
 					CreateTableSpaceStmt *n = makeNode(CreateTableSpaceStmt);
 					n->tablespacename = $3;
@@ -7174,6 +7175,10 @@ CreateTableSpaceStmt: CREATE TABLESPACE name OptTableSpaceOwner LOCATION Sconst 
 						n->options = lappend(n->options,
 									makeDefElem("path", (Node *)makeString($6), @6));
 					}
+					if ($9 != NULL)
+					{
+					    n->options = lappend(n->options, $9);
+					}
 					$$ = (Node *) n;
 				}
 		;
@@ -7182,9 +7187,14 @@ OptTableSpaceOwner: OWNER RoleSpec		{ $$ = $2; }
 			| /*EMPTY */				{ $$ = NULL; }
 		;
 
-OptServer:      SERVER name                     { $$ = makeDefElem("server", (Node *)makeString($2), @1); }
-                    | /* EMPTY */                   { $$ = NULL; }
-                ;
+OptServer:      SERVER name             { $$ = makeDefElem("server", (Node *)makeString($2), @1); }
+                | /* EMPTY */           { $$ = NULL; }
+        ;
+
+OptFileHandler:
+			HANDLER handler_name        { $$ = makeDefElem("handler", (Node *)$2, @1); }
+			| /* EMPTY */               { $$ = NULL; }
+		;
 
 /*****************************************************************************
  *

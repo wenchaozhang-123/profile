@@ -4860,7 +4860,7 @@ gp_storage_server_aclmask(Oid srv_oid, Oid roleid,
 	HeapTuple	tuple;
 	Datum		aclDatum;
 	bool		isNull;
-	Acl		   *acl;
+	Acl			*acl;
 	Oid			ownerId;
 
 	Form_gp_storage_server srvForm;
