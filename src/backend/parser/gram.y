@@ -4524,7 +4524,7 @@ CopyStmt:	COPY opt_binary qualified_name opt_column_list
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
 								 errmsg("WHERE clause not allowed with COPY TO"),
-								 parser_errposition(@11)));
+								 parser_errposition(@12)));
 
 					n->options = NIL;
 					/* Concatenate user-supplied flags */
