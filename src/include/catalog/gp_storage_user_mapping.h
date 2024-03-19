@@ -27,7 +27,7 @@ CATALOG(gp_storage_user_mapping,6131,StorageUserMappingRelationId) BKI_SHARED_RE
 	Oid			umuser BKI_LOOKUP_OPT(pg_authid);	/* Id of the user,
 													 * InvalidOid if PUBLIC is
 													 * wanted */
-	Oid			umserver BKI_LOOKUP(pg_foreign_server); /* server of this
+	Oid			umserver BKI_LOOKUP(gp_storage_server); /* server of this
 														 * mapping */
 
 #ifdef CATALOG_VARLEN			/* variable-length fields start here */

@@ -547,7 +547,7 @@ RemoveStorageServer(DropStorageServerStmt *stmt)
 	InvokeObjectDropHook(StorageServerRelationId, serverId, 0);
 
 	/*
-	 * Delete shared dependency references related to this role object.
+	 * Delete shared dependency references related to this server object.
 	 */
 	deleteSharedDependencyRecordsFor(StorageServerRelationId, serverId, 0);
 
@@ -857,9 +857,9 @@ RemoveStorageUserMapping(DropStorageUserMappingStmt *stmt)
 	gp_storage_user_mapping_rel = table_open(StorageUserMappingRelationId, RowExclusiveLock);
 
 	ScanKeyInit(&scankey,
-			 	Anum_gp_storage_user_mapping_umuser,
+			 	Anum_gp_storage_user_mapping_oid,
 			 	BTEqualStrategyNumber, F_OIDEQ,
-			 	ObjectIdGetDatum(useId));
+			 	ObjectIdGetDatum(umId));
 	sscan = systable_beginscan(gp_storage_user_mapping_rel, InvalidOid,
 							   false, NULL, 1, &scankey);
 
