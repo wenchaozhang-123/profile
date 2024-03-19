@@ -4854,14 +4854,14 @@ pg_foreign_server_aclmask(Oid srv_oid, Oid roleid,
  */
 AclMode
 gp_storage_server_aclmask(Oid srv_oid, Oid roleid,
-						  AclMode mask, AclMaskHow how)
+						AclMode mask, AclMaskHow how)
 {
 	AclMode		result;
 	HeapTuple	tuple;
 	Datum		aclDatum;
 	bool		isNull;
-	Acl			*acl;
-	Oid			ownerId;
+	Acl		*acl;
+	Oid		ownerId;
 
 	Form_gp_storage_server srvForm;
 

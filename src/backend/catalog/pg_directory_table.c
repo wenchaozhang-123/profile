@@ -42,8 +42,8 @@ GetTablespaceFileHandler(Oid spcId)
 	HeapTuple tuple;
 	Datum datum;
 	bool isNull;
-	Form_pg_tablespace 		tblspcForm;
-	Oid fileHandlerOid;
+	Oid	fileHandlerOid;
+	Form_pg_tablespace tblspcForm;
 
 	GetTablespaceFileHandler(spcId);
 	tuple = SearchSysCache1(TABLESPACEOID, ObjectIdGetDatum(spcId));
