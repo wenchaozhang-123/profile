@@ -147,7 +147,7 @@ GetDirectoryTableBuiltinColumns(void)
 		if (i == 0)
 		{
 			Constraint *constraint = makeNode(Constraint);
-			constraint->contype = CONSTR_UNIQUE;
+			constraint->contype = CONSTR_PRIMARY;
 			constraint->location = -1;
 			constraint->keys = NIL;
 			constraint->options = NIL;
