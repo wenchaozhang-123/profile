@@ -36,7 +36,7 @@ static const DirTableColumnDesc dirTableColumns[] = {
 	{"tag", "text"}
 };
 
-void
+static void
 GetTablespaceFileHandler(Oid spcId)
 {
 	HeapTuple tuple;
@@ -45,7 +45,6 @@ GetTablespaceFileHandler(Oid spcId)
 	Oid	fileHandlerOid;
 	Form_pg_tablespace tblspcForm;
 
-	GetTablespaceFileHandler(spcId);
 	tuple = SearchSysCache1(TABLESPACEOID, ObjectIdGetDatum(spcId));
 	if (!HeapTupleIsValid(tuple))
 		elog(ERROR, "cache lookup failed for table space %u", spcId);
@@ -62,7 +61,7 @@ GetTablespaceFileHandler(Oid spcId)
 		datum = OidFunctionCall0(fileHandlerOid);
 		currentFileAm = (FileAm *) DatumGetPointer(datum);
 		if (currentFileAm == NULL)
-			elog(ERROR, "table space file handler %u did not return a FileAm struct",
+			elog(ERROR, "tablespace file handler %u did not return a FileAm struct",
 				 		fileHandlerOid);
 	}
 	else
@@ -104,6 +103,7 @@ GetDirectoryTable(Oid relId)
 	dirTable = (DirectoryTable *) palloc(sizeof(DirectoryTable));
 	dirTable->relId = relId;
 	dirTable->spcId = dirtableForm->dttablespace;
+	GetTablespaceFileHandler(dirtableForm->dttablespace);
 
 	datum = SysCacheGetAttr(DIRECTORYTABLEREL,
 							tuple,
