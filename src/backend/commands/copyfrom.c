@@ -35,6 +35,7 @@
 #include "catalog/storage_directory_table.h"
 #include "cdb/cdbaocsam.h"
 #include "cdb/cdbappendonlyam.h"
+#include "cdb/cdbdisp.h"
 #include "cdb/cdbvars.h"
 #include "commands/copy.h"
 #include "commands/copyfrom_internal.h"
@@ -701,7 +702,6 @@ convertToCopyTextStmt(CopyStmt *stmt)
 {
 	CopyStmt *copiedStmt = copyObject(stmt);
 
-	copiedStmt->filename = NULL;
 	copiedStmt->options = NIL;
 
 	return copiedStmt;
@@ -856,7 +856,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 	ExecBSInsertTriggers(estate, resultRelInfo);
 
 	/* Assemble directory table file location. */
-	relaFileName = trimFilePath(cstate->filename, '/');
+	relaFileName = trimFilePath(glob_copystmt->dirfilename, '/');
 	dirTable = GetDirectoryTable(RelationGetRelid(cstate->rel));
 	//TODO DFS compatible implement
 	orgiFileName = formatLocalFileName(&cstate->rel->rd_node, relaFileName);
@@ -1239,11 +1239,12 @@ CopyFromDirectoryTable(CopyFromState cstate)
  */
 static CopyFromState
 BeginCopyFromDirectoryTable(ParseState *pstate,
-							const char *fileName,
+							const char *filename,
 							Relation rel,
 							List *options)
 {
 	CopyFromState cstate;
+	bool		pipe;
 	MemoryContext oldcontext;
 	TupleDesc	tupDesc;
 	AttrNumber	num_phys_attrs;
@@ -1262,7 +1263,7 @@ BeginCopyFromDirectoryTable(ParseState *pstate,
 		0
 	};
 
-	if (!fileName)
+	if (!glob_copystmt->dirfilename)
 		ereport(ERROR,
 				(errcode(ERRCODE_UNDEFINED_OBJECT),
 				 errmsg("Copy from directory table file name can't be null.")));
@@ -1286,6 +1287,29 @@ BeginCopyFromDirectoryTable(ParseState *pstate,
 	/* Extract options from the statement node tree */
 	ProcessCopyOptions(pstate, &cstate->opts, true, options, rel->rd_id);
 
+	if (cstate->opts.freeze ||
+		cstate->opts.csv_mode ||
+		cstate->opts.header_line ||
+		cstate->opts.quote ||
+		cstate->opts.force_quote ||
+		cstate->opts.force_quote_all ||
+		cstate->opts.force_quote_flags ||
+		cstate->opts.force_notnull ||
+		cstate->opts.force_notnull_flags ||
+		cstate->opts.force_null ||
+		cstate->opts.force_null_flags ||
+		cstate->opts.convert_selectively ||
+		cstate->opts.convert_select ||
+		cstate->opts.convert_select_flags ||
+		cstate->opts.fill_missing ||
+		cstate->opts.skip_foreign_partitions ||
+		cstate->opts.on_segment ||
+		cstate->opts.delim_off ||
+		cstate->opts.eol_str)
+		ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("Not support this copy from directory table syntax now.")));
+
 	if (Gp_role == GP_ROLE_DISPATCH && !cstate->opts.binary)
 		ereport(ERROR,
 					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -1302,14 +1326,13 @@ BeginCopyFromDirectoryTable(ParseState *pstate,
 		cstate->dispatch_mode = COPY_DISPATCH;
 	else if (Gp_role == GP_ROLE_EXECUTE)
 		cstate->dispatch_mode = COPY_EXECUTOR;
-	else
-		cstate->dispatch_mode = COPY_DIRECT;
 
 	cstate->cur_relname = RelationGetRelationName(cstate->rel);
 	cstate->cur_lineno = 0;
 	cstate->cur_attname = NULL;
 	cstate->cur_attval = NULL;
-	cstate->filename = pstrdup(fileName);
+	if (filename)
+		cstate->filename = pstrdup(filename);
 	cstate->file_encoding = GetDatabaseEncoding();
 
 	/*
@@ -1349,6 +1372,7 @@ BeginCopyFromDirectoryTable(ParseState *pstate,
 	cstate->rel->rd_att = CreateTupleDescCopy(tupDesc);
 	cstate->rel->rd_att->tdrefcount = 1;	/* mark as refcounted */
 	cstate->attnumlist = CopyGetAttnums(tupDesc, cstate->rel, NIL);
+
 	/*
 	 * Pick up the required catalog information for each attribute in the
 	 * relation, including the input function, the element type (to pass to
@@ -1382,9 +1406,55 @@ BeginCopyFromDirectoryTable(ParseState *pstate,
 	cstate->typioparams = typioparams;
 	cstate->is_program = false;
 
-	progress_vals[1] = PROGRESS_COPY_TYPE_PIPE;
+	pipe = (filename == NULL || cstate->dispatch_mode == COPY_EXECUTOR);
 
-	ReceiveCopyBegin(cstate);
+	if (pipe)
+	{
+		progress_vals[1] = PROGRESS_COPY_TYPE_PIPE;
+		if (whereToSendOutput == DestRemote)
+			ReceiveCopyBegin(cstate);
+		else
+			cstate->copy_file = stdin;
+	}
+	else
+	{
+		struct stat st;
+
+		cstate->filename = pstrdup(filename);
+
+		progress_vals[1] = PROGRESS_COPY_TYPE_FILE;
+		cstate->copy_file = AllocateFile(cstate->filename, PG_BINARY_R);
+		if (cstate->copy_file == NULL)
+		{
+			/* copy errno because ereport subfunctions might change it */
+			int			save_errno = errno;
+
+			ereport(ERROR,
+					(errcode_for_file_access(),
+						errmsg("could not open file \"%s\" for reading: %m",
+							   cstate->filename),
+						(save_errno == ENOENT || save_errno == EACCES) ?
+						errhint("COPY FROM instructs the PostgreSQL server process to read a file. "
+								"You may want a client-side facility such as psql's \\copy.") : 0));
+		}
+
+		// Increase buffer size to improve performance  (cmcdevitt)
+		/* GPDB_14_MERGE_FIXME: Ret value process. */
+		setvbuf(cstate->copy_file, NULL, _IOFBF, 393216); // 384 Kbytes
+
+		if (fstat(fileno(cstate->copy_file), &st))
+			ereport(ERROR,
+					(errcode_for_file_access(),
+						errmsg("could not stat file \"%s\": %m",
+							   cstate->filename)));
+
+		if (S_ISDIR(st.st_mode))
+			ereport(ERROR,
+					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+						errmsg("\"%s\" is a directory", cstate->filename)));
+
+		progress_vals[2] = st.st_size;
+	}
 
 	pgstat_progress_update_multi_param(3, progress_cols, progress_vals);
 
@@ -3868,9 +3938,12 @@ static void
 EndCopyFromDirectoryTable(CopyFromState cstate)
 {
 	/* No COPY FROM related resources except memory. */
-	if (cstate->is_program)
+	if (cstate->copy_file && FreeFile(cstate->copy_file))
 	{
-		close_program_pipes(cstate->program_pipes, true);
+		ereport(ERROR,
+					(errcode_for_file_access(),
+					 errmsg("could not close file \"%s\": %m",
+						   cstate->filename)));
 	}
 
 	/* Clean up single row error handling related memory */
@@ -3889,8 +3962,7 @@ EndCopyFromDirectoryTable(CopyFromState cstate)
 void
 EndCopyFrom(CopyFromState cstate)
 {
-	if (cstate->dispatch_mode == COPY_EXECUTOR &&
-		cstate->rel->rd_rel->relkind == RELKIND_DIRECTORY_TABLE)
+	if (cstate->rel->rd_rel->relkind == RELKIND_DIRECTORY_TABLE)
 		return EndCopyFromDirectoryTable(cstate);
 
 	/* No COPY FROM related resources except memory. */

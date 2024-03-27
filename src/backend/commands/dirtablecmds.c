@@ -390,7 +390,7 @@ remove_file_segment(PG_FUNCTION_ARGS)
 	systable_endscan(scan);
 	list_free(indexOids);
 
-	table_close(relation, NoLock);
+	table_close(relation, AccessExclusiveLock);
 
 	PG_RETURN_BOOL(exist);
 }
@@ -460,7 +460,7 @@ remove_file(PG_FUNCTION_ARGS)
 
 	cdbdisp_clearCdbPgResults(&cdbPgresults);
 
-	table_close(relation, NoLock);
+	table_close(relation, AccessExclusiveLock);
 
 	PG_RETURN_BOOL(numDeletes > 0);
 }
