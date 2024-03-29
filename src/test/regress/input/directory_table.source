@@ -8,8 +8,24 @@
 \d+ gp_storage_server;
 \d+ gp_storage_user_mapping;
 
+SELECT relname, relisshared, relpersistence, relkind FROM pg_class WHERE relname = 'pg_directory_table';
+SELECT relname, relisshared, relpersistence, relkind FROM pg_class WHERE relname = 'gp_storage_server';
+SELECT relname, relisshared, relpersistence, relkind FROM pg_class WHERE relname = 'gp_storage_user_mapping';
+
 -- CREATE TABLESPACE
 CREATE TABLESPACE directory_tblspc LOCATION '@testtablespace@';
+
+-- CREATE DATABASE
+CREATE DATABASE dirtable_db;
+\c dirtable_db
+\d+ pg_directory_table;
+\d+ gp_storage_server;
+\d+ gp_storage_user_mapping;
+
+SELECT relname, relisshared, relpersistence, relkind FROM pg_class WHERE relname = 'pg_directory_table';
+SELECT relname, relisshared, relpersistence, relkind FROM pg_class WHERE relname = 'gp_storage_server';
+SELECT relname, relisshared, relpersistence, relkind FROM pg_class WHERE relname = 'gp_storage_user_mapping';
+\c regression
 
 -- CREATE USER for directory table
 CREATE USER test_dirtable1;
@@ -34,6 +50,9 @@ CREATE STORAGE SERVER IF NOT EXISTS oss_server12 OPTIONS(protocol 's3av2', endpo
 CREATE STORAGE SERVER IF NOT EXISTS oss_server13 OWNER TO postgres;   -- fail
 
 SELECT srvname, srvacl, srvoptions from gp_storage_server ORDER BY 1;
+\c dirtable_db
+SELECT srvname, srvacl, srvoptions from gp_storage_server ORDER BY 1;
+\c regression
 
 -- Test ALTER STORAGE SERVER
 ALTER STORAGE SERVER oss_server1 OPTIONS(protocol 'aws');
@@ -50,6 +69,9 @@ ALTER STORAGE SERVER IF EXISTS oss_server7 OPTIONS(endpoint '127.0.0.1:6555');  
 ALTER STORAGE SERVER IF NOT EXISTS oss_server8 OPTIONS(virtual_host 'true');    -- fail
 
 SELECT srvname, srvacl, srvoptions from gp_storage_server ORDER BY 1;
+\c dirtable_db
+SELECT srvname, srvacl, srvoptions from gp_storage_server ORDER BY 1;
+\c regression
 
 -- Test CREATE STORAGE USER MAPPING
 CREATE STORAGE USER MAPPING FOR CURRENT_USER;   -- fail
@@ -106,6 +128,9 @@ OPTIONS (auth_method 'simple');
 CREATE STORAGE USER MAPPING IF NOT EXISTS FOR no_exist_user STORAGE SERVER oss_server1;   -- fail
 
 SELECT umoptions FROM gp_storage_user_mapping ORDER BY 1;
+\c dirtable_db
+SELECT umoptions FROM gp_storage_user_mapping ORDER BY 1;
+\c regression
 
 -- Test ALTER STORAGE USER MAPPING
 ALTER STORAGE USER MAPPING FOR CURRENT_USER STORAGE SERVER oss_server1; -- fail
@@ -132,6 +157,9 @@ ALTER STORAGE USER MAPPING IF NOT EXISTS FOR test_dirtable1 STORAGE SERVER oss_s
 OPTIONS (auth_method 'simple'); -- fail
 
 SELECT umoptions FROM gp_storage_user_mapping ORDER BY 1;
+\c dirtable_db
+SELECT umoptions FROM gp_storage_user_mapping ORDER BY 1;
+\c regression
 
 -- Test DROP STORAGE USER MAPPING
 DROP STORAGE USER MAPPING FOR CURRENT_USER; -- fail
@@ -143,6 +171,9 @@ DROP STORAGE USER MAPPING FOR no_exist_user STORAGE SERVER oss_server1; -- fail
 DROP STORAGE USER MAPPING IF EXISTS FOR no_exist_user STORAGE SERVER oss_server1;   -- skip
 
 SELECT umoptions FROM gp_storage_user_mapping ORDER BY 1;
+\c dirtable_db
+SELECT umoptions FROM gp_storage_user_mapping ORDER BY 1;
+\c regression
 
 -- Test DROP STOARGE SERVER
 DROP STORAGE SERVER oss_server1;    -- fail
@@ -156,6 +187,9 @@ DROP STORAGE SERVER IF NOT EXISTS oss_server9;  --fail
 DROP STORAGE SERVER IF EXISTS oss_server10;
 
 SELECT srvname, srvacl, srvoptions from gp_storage_server ORDER BY 1;
+\c dirtable_db
+SELECT srvname, srvacl, srvoptions from gp_storage_server ORDER BY 1;
+\c regression
 
 -- Test directory table
 -- Test CREATE DIRECTORY TABLE
@@ -165,38 +199,57 @@ SELECT relname, relisshared, relpersistence, relkind FROM pg_class WHERE relname
 CREATE DIRECTORY TABLE dir_table1;  -- fail
 CREATE DIRECTORY TABLE dir_table2 TABLESPACE directory_tblspc;
 CREATE DIRECTORY TABLE dir_table3 TABLESPACE directory_tblspc DISTRIBUTED BY(relative_path);    -- fail
+CREATE DIRECTORY TABLE dir_table3 TABLESPACE directory_tblspc DISTRIBUTED RANDOMLY; -- fail
+CREATE DIRECTORY TABLE dir_table3 TABLESPACE directory_tblspc DISTRIBUTED REPLICATED;   -- fail
+CREATE DIRECTORY TABLE dir_table3 TABLESPACE directory_tblspc;
 CREATE DIRECTORY TABLE IF NOT EXISTS dir_table1 TABLESPACE directory_tblspc;
 CREATE DIRECTORY TABLE IF NOT EXISTS dir_table2 TABLESPACE directory_tblspc;    -- fail
 CREATE DIRECTORY TABLE dir_table4 TABLESPACE directory_tblspc;
 CREATE DIRECTORY TABLE dir_table5 TABLESPACE directory_tblspc;
-\dY
 
+\dY
 SELECT count(*) FROM pg_directory_table;
 SELECT relname, relisshared, relpersistence, relkind FROM pg_class WHERE relname like '%dir_table%' ORDER BY 1;
 \d+ dir_table1;
 \d+ dir_table2;
 \d+ dir_table3;
+\c dirtable_db
+\dY
+SELECT count(*) FROM pg_directory_table;
+SELECT relname, relisshared, relpersistence, relkind FROM pg_class WHERE relname like '%dir_table%' ORDER BY 1;
+\c regression
+
+-- Test create table inherits directory table
+CREATE TABLE test_inherits1 INHERITS(dir_table1);   -- fail
+CREATE TABLE test_inherits2(a int) INHERITS(dir_table2);    -- fail
+CREATE TABLE test_inherits3 INHERITS(dir_table2, dir_table3);   -- fail
+CREATE TABLE test_inherits4(b text) INHERITS(dir_table1, dir_table2);   -- fail
 
 -- Test DROP DIRECTORY TABLE
 DROP DIRECTORY TABLE dir_table4;
 DROP DIRECTORY TABLE dir_table4;    -- fail
 DROP DIRECTORY TABLE IF EXISTS dir_table5;
 DROP DIRECTORY TABLE IF EXISTS dir_table5;  -- skip
-\dY
 
+\dY
 SELECT count(*) FROM pg_directory_table;
 SELECT relname, relisshared, relpersistence, relkind FROM pg_class WHERE relname like '%dir_table%' ORDER BY 1;
+\c dirtable_db
+\dY
+SELECT count(*) FROM pg_directory_table;
+SELECT relname, relisshared, relpersistence, relkind FROM pg_class WHERE relname like '%dir_table%' ORDER BY 1;
+\c regression
 
--- Test COPY DIRECTORY TABLE
+-- Test COPY DIRECTORY TABLE syntax
 SELECT relative_path, size, tag FROM dir_table1 ORDER BY 1;
 SELECT relative_path, size, tag FROM dir_table2 ORDER BY 1;
 
 \COPY dir_table1 FROM '@abs_srcdir@/data/nation.csv';    -- fail
+\COPY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation'; -- fail
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv';    -- fail
-COPY dir_table1 FROM '@abs_srcdir@/data/nation.csv';     -- fail
-COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv';     -- fail
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation1';
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation1'; -- fail
+\COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation2' 'nation2'; -- fail
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation2';
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation3' WITH TAG 'nation';
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation3' WITH TAG 'nation';    -- fail
@@ -204,16 +257,74 @@ COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv';     -- fail
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation4' WITH TAG 'nation';
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation5' WITH TAG 'nation' WITH TAG 'nation2';    -- fail
 SELECT relative_path, size, tag FROM dir_table1 ORDER BY 1;
+SELECT relative_path, content FROM directory_table('dir_table1');
 
-\COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation1';
-\COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation1'; -- fail
-\COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation2';
-\COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation3' WITH TAG 'nation';
-\COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation3' WITH TAG 'nation';    -- fail
-\COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation3' WITH TAG 'nation2';    -- fail
-\COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation4' WITH TAG 'nation';
-\COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation5' WITH TAG 'nation' WITH TAG 'nation2';    -- fail
+COPY dir_table2 FROM '@abs_srcdir@/data/nation.csv';     -- fail
+COPY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation';  -- fail
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv';     -- fail
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation1';
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation1'; -- fail
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation2';
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation3' WITH TAG 'nation';
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation3' WITH TAG 'nation';    -- fail
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation3' WITH TAG 'nation2';    -- fail
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation4' WITH TAG 'nation';
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation5' WITH TAG 'nation' WITH TAG 'nation2';    -- fail
 SELECT relative_path, size, tag FROM dir_table2 ORDER BY 1;
+SELECT relative_path, content FROM directory_table('dir_table2');
+
+-- Test copy binary from directory table
+\COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (format CSV);
+\COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (freeze off);
+\COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (freeze on);
+\COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (delimiter ',');
+\COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (null ' ');
+\COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (header off);
+\COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (header on);
+\COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (quote ':');
+\COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (escape ':');
+\COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (force_quote (a));
+\COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (force_quote *);
+\COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (force_not_null (a));
+\COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (force_null (a));
+\COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (convert_selectively (a));
+\COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (encoding 'sql_ascii');
+
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (format CSV);
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (freeze off);
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (freeze on);
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (delimiter ',');
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (null ' ');
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (header off);
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (header on);
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (quote ':');
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (escape ':');
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (force_quote (a));
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (force_quote *);
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (force_not_null (a));
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (force_null (a));
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (convert_selectively (a));
+COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (encoding 'sql_ascii');
+
+-- Test copy file content md5
+CREATE OR REPLACE FUNCTION file_content(text, text) RETURNS BYTEA LANGUAGE SQL AS
+'select content from directory_table($1) where relative_path = $2';
+
+CREATE OR REPLACE FUNCTION file_md5(text, text) RETURNS TEXT LANGUAGE SQL AS
+'select md5 from directory_table($1) where relative_path = $2';
+
+CREATE OR REPLACE FUNCTION md5_equal(text, text) RETURNS BOOL LANGUAGE SQL AS
+'SELECT md5(file_content($1, $2)) = (SELECT file_md5($1, $2))';
+
+SELECT md5_equal('dir_table1', 'nation1');
+SELECT md5_equal('dir_table1', 'nation2');
+SELECT md5_equal('dir_table1', 'nation3');
+SELECT md5_equal('dir_table1', 'nation4');
+
+SELECT md5_equal('dir_table2', 'nation1');
+SELECT md5_equal('dir_table2', 'nation2');
+SELECT md5_equal('dir_table2', 'nation3');
+SELECT md5_equal('dir_table2', 'nation4');
 
 -- Does not support copy to
 \COPY dir_table1 TO '@abs_srcdir@/data/dir_table1';  -- fail
@@ -254,6 +365,18 @@ UPDATE dir_table2 SET tag = 'no_tag' WHERE relative_path = 'not_exist_path';
 SELECT relative_path, size, tag FROM dir_table1 ORDER BY 1;
 SELECT relative_path, size, tag FROM dir_table2 ORDER BY 1;
 
+-- Test alter table directory schema table
+ALTER TABLE dir_table1 ADD COLUMN a int;    -- fail
+ALTER DIRECTORY TABLE dir_table1 ADD COLUMN a int;  -- fail
+ALTER TABLE dir_table2 DROP COLUMN relative_path;   -- fail
+ALTER DIRECTORY TABLE dir_table2 DROP COLUMN relative_path; -- fail
+ALTER TABLE dir_table1 RENAME TO dir_table_new; -- fail
+ALTER DIRECTORY TABLE dir_table1 RENAME TO dir_table_new;   -- fail
+ALTER TABLE dir_table2 ADD CONSTRAINT dirtable_constraint UNIQUE (tag); -- fail
+ALTER DIRECTORY TABLE dir_table2 ADD CONSTRAINT dirtable_constraint UNIQUE (tag);   -- fail
+ALTER TABLE dir_table1 DROP CONSTRAINT DROP CONSTRAINT test_pkey;   -- fail
+ALTER DIRECTORY TABLE dir_table1 DROP CONSTRAINT DROP CONSTRAINT test_pkey; -- fail
+
 -- Test remove_table
 SELECT remove_file('dir_table1', 'nation5');    -- fail
 SELECT remove_file('dir_table1', 'nation1');
@@ -265,18 +388,142 @@ SELECT remove_file('dir_table1', 'nation1');    -- fail
 SELECT relative_path, size, tag FROM dir_table1 ORDER BY 1;
 SELECT relative_path, size, tag FROM dir_table2 ORDER BY 1;
 
--- Test transaction commit
+-- Test transaction commit of directory table manipulation
+CREATE DIRECTORY TABLE dir_table4 TABLESPACE directory_tblspc;
 
--- Test transaction rollback
+BEGIN;
+COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_commit';
+COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_commit2' WITH TAG 'nation';
 
--- Test subtransaction commit
+COMMIT;
+SELECT relative_path, content FROM directory_table('dir_table4');
 
--- Test subtransaction rollback
+BEGIN;
+SELECT remove_file('dir_table4', 'nation_commit');
+SELECT relative_path, content FROM directory_table('dir_table4');
+COMMIT;
+SELECT relative_path, content FROM directory_table('dir_table4');
+
+BEGIN;
+SELECT relative_path, tag FROM dir_table4;
+UPDATE dir_table4 SET tag = 'nation_updated' WHERE relative_path = 'nation_commit2';
+COMMIT;
+SELECT relative_path, tag FROM dir_table4;
+
+-- Test transaction rollback of directory table manipulation
+
+BEGIN;
+COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_rollback';
+SELECT relative_path, content FROM directory_table('dir_table4');
+ROLLBACK;
+SELECT relative_path, content FROM directory_table('dir_table4');
+
+BEGIN;
+SELECT remove_file('dir_table4', 'nation_commit2');
+SELECT relative_path, content FROM directory_table('dir_table4');
+ROLLBACK;
+SELECT relative_path, content FROM directory_table('dir_table4');
+
+BEGIN;
+SELECT relative_path, tag FROM dir_table4;
+COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_rollback2' WITH TAG 'nation';
+UPDATE dir_table4 SET tag = 'nation_updated' WHERE relative_path = 'nation_rollback2';
+SELECT relative_path, tag FROM dir_table4;
+ROLLBACK;
+SELECT relative_path, tag FROM dir_table4;
+
+-- Test subtransaction commit of directory table manipulation
+BEGIN;
+SELECT relative_path, tag FROM dir_table4;
+COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subcommit' WITH TAG 'nation';
+SAVEPOINT s1;
+SELECT relative_path, tag FROM dir_table4;
+COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subcommit2';
+SAVEPOINT s2;
+SELECT relative_path, tag FROM dir_table4;
+COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subcommit3';
+RELEASE SAVEPOINT s1;
+SELECT relative_path, tag FROM dir_table4;
+COMMIT;
+SELECT relative_path, tag FROM dir_table4;
+
+BEGIN;
+SELECT relative_path, tag FROM dir_table4;
+SELECT remove_file('dir_table4', 'nation_subcommit');
+SAVEPOINT s1;
+SELECT relative_path, tag FROM dir_table4;
+COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subcommit';
+SAVEPOINT s2;
+SELECT relative_path, tag FROM dir_table4;
+RELEASE SAVEPOINT s1;
+SELECT relative_path, tag FROM dir_table4;
+COMMIT;
+
+BEGIN;
+SELECT relative_path, tag FROM dir_table4;
+SELECT remove_file('dir_table4', 'nation_subcommit');
+SAVEPOINT s1;
+SELECT relative_path, tag FROM dir_table4;
+SELECT remove_file('dir_table4', 'nation_subcommit2');
+SAVEPOINT s2;
+SELECT relative_path, tag FROM dir_table4;
+RELEASE SAVEPOINT s2;
+SELECT relative_path, tag FROM dir_table4;
+COMMIT;
+
+BEGIN;
+SELECT relative_path, tag FROM dir_table4;
+SELECT remove_file('dir_table4', 'nation_subcommit2');
+SAVEPOINT s1;
+SELECT relative_path, tag FROM dir_table4;
+COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subcommit4';
+SAVEPOINT s2;
+SELECT relative_path, tag FROM dir_table4;
+ROLLBACK TO SAVEPOINT s1;
+COMMIT;
+
+-- Test subtransaction rollback of directory table manipulation
+COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subrollback1';
+COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subrollback2';
+BEGIN;
+SELECT relative_path, tag FROM dir_table4;
+COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subrollback3';
+SELECT relative_path, tag FROM dir_table4;
+SAVEPOINT s1;
+SELECT remove_file('dir_table4', 'nation_subrollback1');
+SAVEPOINT s2;
+SELECT relative_path, tag FROM dir_table4;
+ROLLBACK;
+
+BEGIN;
+COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subrollback4';
+SELECT relative_path, tag FROM dir_table4;
+SAVEPOINT s1;
+SELECT remove_file('dir_table4', 'nation_subrollback4');
+SAVEPOINT s2;
+SELECT relative_path, tag FROM dir_table4;
+RELEASE SAVEPOINT s1;
+ROLLBACK;
+
+BEGIN;
+SELECT remove_file('dir_table4', 'nation_subrollback2');
+COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subrollback5';
+SELECT relative_path, tag FROM dir_table4;
+SAVEPOINT s1;
+SELECT remove_file('dir_table4', 'nation_subrollback5');
+SELECT relative_path, tag FROM dir_table4;
+ROLLBACK TO SAVEPOINT s1;
+SELECT relative_path, tag FROM dir_table4;
+COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subrollback6';
+SELECT relative_path, tag FROM dir_table4;
+SAVEPOINT s2;
+ROLLBACK;
 
 -- clean up
 DROP DIRECTORY TABLE IF EXISTS dir_table1;
 DROP DIRECTORY TABLE IF EXISTS dir_table2;
 DROP DIRECTORY TABLE IF EXISTS dir_table3;
+DROP DIRECTORY TABLE IF EXISTS dir_table4;
 
 DROP STORAGE USER MAPPING IF EXISTS FOR CURRENT_USER STORAGE SERVER oss_server1;
 DROP STORAGE USER MAPPING IF EXISTS FOR CURRENT_USER STORAGE SERVER oss_server2;
@@ -308,5 +555,11 @@ DROP USER test_dirtable1;
 DROP USER test_dirtable2;
 DROP USER test_dirtable3;
 DROP USER test_dirtable4;
+
+DROP FUNCTION IF EXISTS file_content;
+DROP FUNCTION IF EXISTS file_md5;
+DROP FUNCTION IF EXISTS md5_equal;
+
+DROP DATABASE dirtable_db;
 
 DROP TABLESPACE directory_tblspc;

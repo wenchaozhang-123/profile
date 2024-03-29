@@ -8178,6 +8178,11 @@ CreateDirectoryTableStmt:
                                      parser_errposition(@6)));
                     n->base.if_not_exists = false;
                     n->base.distributedBy = (DistributedBy *) $7;
+                    if (n->base.distributedBy != NULL)
+                        ereport(ERROR,
+                                    (errcode(ERRCODE_SYNTAX_ERROR),
+                                     errmsg("Create directory table is not allowed to set distributed by."),
+                                     parser_errposition(@7)));
                     n->base.relKind = RELKIND_DIRECTORY_TABLE;
                     n->tablespacename = $6;
 
@@ -8204,6 +8209,11 @@ CreateDirectoryTableStmt:
                                      parser_errposition(@9)));
                     n->base.if_not_exists = true;
                     n->base.distributedBy = (DistributedBy *) $10;
+                    if (n->base.distributedBy != NULL)
+                        ereport(ERROR,
+                                    (errcode(ERRCODE_SYNTAX_ERROR),
+                                     errmsg("Create directory table is not allowed to set distributed by."),
+                                     parser_errposition(@10)));
                     n->base.relKind = RELKIND_DIRECTORY_TABLE;
                     n->tablespacename = $9;
 
@@ -11855,26 +11865,6 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 					n->missing_ok = true;
 					$$ = (Node *)n;
 				}
-            | ALTER DIRECTORY TABLE relation_expr RENAME TO name
-                {
-                    RenameStmt *n = makeNode(RenameStmt);
-                    n->renameType = OBJECT_DIRECTORY_TABLE;
-                    n->relation = $4;
-                    n->subname = NULL;
-                    n->newname = $7;
-                    n->missing_ok = false;
-                    $$ = (Node *) n;
-                }
-            | ALTER DIRECTORY TABLE IF_P EXISTS relation_expr RENAME TO name
-                {
-                    RenameStmt *n = makeNode(RenameStmt);
-                    n->renameType = OBJECT_DIRECTORY_TABLE;
-                    n->relation = $6;
-                    n->subname = NULL;
-                    n->newname = $9;
-                    n->missing_ok = true;
-                    $$ = (Node *) n;
-                }
 			| ALTER TABLE relation_expr RENAME opt_column name TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);

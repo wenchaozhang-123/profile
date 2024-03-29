@@ -4281,6 +4281,11 @@ RenameRelation(RenameStmt *stmt)
 		 * if we already acquired AccessExclusiveLock with an index, however.
 		 */
 		relkind = get_rel_relkind(relid);
+		if (relkind == RELKIND_DIRECTORY_TABLE)
+			ereport(ERROR,
+						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+						 errmsg("Rename directory table is not allowed.")));
+
 		obj_is_index = (relkind == RELKIND_INDEX ||
 						relkind == RELKIND_PARTITIONED_INDEX);
 		if (obj_is_index || is_index_stmt == obj_is_index)

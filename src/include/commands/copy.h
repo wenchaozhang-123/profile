@@ -144,6 +144,7 @@ extern void DoCopy(ParseState *state, const CopyStmt *stmt,
 				   uint64 *processed);
 
 extern void ProcessCopyOptions(ParseState *pstate, CopyFormatOptions *ops_out, bool is_from, List *options, Oid rel_oid);
+extern void ProcessCopyDirectoryTableOptions(ParseState *pstate, CopyFormatOptions *ops_out, bool is_from, List *options, Oid rel_oid);
 extern CopyFromState BeginCopyFrom(ParseState *pstate, Relation rel, Node *whereClause,
 								   const char *filename,
 								   bool is_program, copy_data_source_cb data_source_cb,

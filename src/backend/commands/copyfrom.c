@@ -1284,31 +1284,8 @@ BeginCopyFromDirectoryTable(ParseState *pstate,
 	/* Process the target relation */
 	cstate->rel = rel;
 
-	/* Extract options from the statement node tree */
-	ProcessCopyOptions(pstate, &cstate->opts, true, options, rel->rd_id);
-
-	if (cstate->opts.freeze ||
-		cstate->opts.csv_mode ||
-		cstate->opts.header_line ||
-		cstate->opts.quote ||
-		cstate->opts.force_quote ||
-		cstate->opts.force_quote_all ||
-		cstate->opts.force_quote_flags ||
-		cstate->opts.force_notnull ||
-		cstate->opts.force_notnull_flags ||
-		cstate->opts.force_null ||
-		cstate->opts.force_null_flags ||
-		cstate->opts.convert_selectively ||
-		cstate->opts.convert_select ||
-		cstate->opts.convert_select_flags ||
-		cstate->opts.fill_missing ||
-		cstate->opts.skip_foreign_partitions ||
-		cstate->opts.on_segment ||
-		cstate->opts.delim_off ||
-		cstate->opts.eol_str)
-		ereport(ERROR,
-					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-					 errmsg("Not support this copy from directory table syntax now.")));
+	/* Check whether copy directory table options allowed */
+	ProcessCopyDirectoryTableOptions(pstate, &cstate->opts, true, options, rel->rd_id);
 
 	if (Gp_role == GP_ROLE_DISPATCH && !cstate->opts.binary)
 		ereport(ERROR,
