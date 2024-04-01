@@ -810,7 +810,6 @@ CopyFromDirectoryTable(CopyFromState cstate)
 	StringInfoData	buf;
 	ExprContext *econtext;
 	int			bytesRead;
-	//int			bytesWrite;
 	char		hexMd5Sum[256];
 	char		buffer[DIR_FILE_BUFF_SIZE];
 	int64		processed = 0;
@@ -858,7 +857,6 @@ CopyFromDirectoryTable(CopyFromState cstate)
 	/* Assemble directory table file location. */
 	relaFileName = trimFilePath(glob_copystmt->dirfilename, '/');
 	dirTable = GetDirectoryTable(RelationGetRelid(cstate->rel));
-	//TODO DFS compatible implement
 	orgiFileName = formatLocalFileName(&cstate->rel->rd_node, relaFileName);
 
 	/*

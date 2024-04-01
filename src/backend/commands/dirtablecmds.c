@@ -371,6 +371,9 @@ remove_file_segment(PG_FUNCTION_ARGS)
 
 	dirTable = GetDirectoryTable(relId);
 	relation = table_open(relId, AccessExclusiveLock);
+
+	SIMPLE_FAULT_INJECTOR("remove_file_inject");
+
 	indexOids = RelationGetIndexList(relation);
 	Assert(list_length(indexOids) == 1);
 
@@ -422,8 +425,6 @@ remove_file(PG_FUNCTION_ARGS)
 	relativePath = PG_GETARG_CSTRING(1);
 
 	relation = table_open(relId, AccessExclusiveLock);
-
-	SIMPLE_FAULT_INJECTOR("remove_file_inject");
 
 	if (Gp_role != GP_ROLE_DISPATCH)
 		ereport(ERROR,
