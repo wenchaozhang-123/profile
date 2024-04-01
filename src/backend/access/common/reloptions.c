@@ -166,7 +166,6 @@ static relopt_bool boolRelOpts[] =
 		},
 		true
 	},
-	/* TODO: Whether this should also be moved to extension? */
 	{
 		{
 			"stage",
@@ -556,7 +555,6 @@ static relopt_enum enumRelOpts[] =
 
 static relopt_string stringRelOpts[] =
 {
-	/* TODO: Whether this should also be moved to extension? */
 	{
 		{
 			"server",

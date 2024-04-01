@@ -209,7 +209,6 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 		distributedBy->ptype = POLICYTYPE_PARTITIONED;
 		distributedBy->numsegments = -1;
 		DistributionKeyElem *elem = makeNode(DistributionKeyElem);
-		//char	   *attname = pstrdup(NameStr(TupleDescAttr(tupdesc, attno - 1)->attname));
 		elem->name = "relative_path";
 		if (gp_use_legacy_hashops)
 			opclassoid = get_legacy_cdbhash_opclass_for_base_type(25);

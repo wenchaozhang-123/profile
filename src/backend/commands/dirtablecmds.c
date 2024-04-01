@@ -48,6 +48,7 @@
 #include "tcop/utility.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+#include "utils/faultinjector.h"
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
@@ -133,7 +134,6 @@ CreateDirectoryTable(CreateDirectoryTableStmt *stmt, Oid relId)
 		elog(ERROR, "cache lookup failed for relation %u", relId);
 	pg_class_tuple = (Form_pg_class) GETSTRUCT(class_tuple);
 
-	//TODO local need oid while dfs need relfilenode, should be compatible
 	dirTablePath = getDirectoryTablePath(spcId, MyDatabaseId, pg_class_tuple->relfilenode);
 
 	ReleaseSysCache(class_tuple);
@@ -266,6 +266,9 @@ directory_table(PG_FUNCTION_ARGS)
 
 		context = (TableFunctionContext *) palloc0(sizeof(TableFunctionContext));
 		context->relation = table_open(relId, AccessShareLock);
+
+		SIMPLE_FAULT_INJECTOR("directory_table_inject");
+
 		if (!RelationIsDirectoryTable(relId))
 			ereport(ERROR,
 					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -419,6 +422,8 @@ remove_file(PG_FUNCTION_ARGS)
 	relativePath = PG_GETARG_CSTRING(1);
 
 	relation = table_open(relId, AccessExclusiveLock);
+
+	SIMPLE_FAULT_INJECTOR("remove_file_inject");
 
 	if (Gp_role != GP_ROLE_DISPATCH)
 		ereport(ERROR,

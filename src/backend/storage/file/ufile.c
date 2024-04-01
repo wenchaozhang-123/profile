@@ -48,8 +48,6 @@ static bool localFileExists(const char *fileName);
 static const char *localFileName(UFile *file);
 static const char *localGetLastError(void);
 
-//static char *formatLocalFileName(RelFileNode *relFileNode, const char *fileName);
-
 static char localFileErrorStr[UFILE_ERROR_SIZE];
 
 struct FileAm localFileAm = {
@@ -61,7 +59,6 @@ struct FileAm localFileAm = {
 	.getLastError = localGetLastError,
 };
 
-//TODO
 struct FileAm *currentFileAm = &localFileAm;
 
 static UFile *
@@ -72,17 +69,6 @@ UFileOpenInternal(Oid spcId,
 				  char *errorMessage,
 				  int errorMessageSize)
 {
-//	bool isDfsTableSpace;
-
-//	isDfsTableSpace = IsDfsTablespace(relFileNode->spcNode);
-//	if (isDfsTableSpace)
-//		return remoteFileOpen(relFileNode->spcNode,
-//							  isNormalfile,
-//							  fileName,
-//							  fileFlags,
-//							  errorMessage,
-//							  errorMessageSize);
-
 	return localFileOpen(spcId,
 						 fileName,
 						 fileFlags,
@@ -112,13 +98,9 @@ localFileOpen(Oid spcId,
 			  char *errorMessage,
 			  int errorMessageSize)
 {
-	//char *filePath;
 	LocalFile *result;
 	File file;
 
-	//filePath = formatLocalFileName(relFileNode, fileName);
-
-	//file = PathNameOpenFile(filePath, fileFlags);
 	file = PathNameOpenFile(fileName, fileFlags);
 	if (file < 0)
 	{
@@ -130,8 +112,6 @@ localFileOpen(Oid spcId,
 	result->methods = &localFileAm;
 	result->file = file;
 	result->offset = 0;
-
-	//pfree(filePath);
 
 	return (UFile *) result;
 }
@@ -383,7 +363,6 @@ UFileName(UFile *file)
 }
 
 
-// TODO dfs
 static void
 UFileUnlinkInternal(Oid spcId, bool isNormalFile, const char *fileName)
 {
@@ -399,18 +378,6 @@ UFileUnlink(Oid spcId, const char *fileName)
 bool
 UFileExists(Oid spcId, const char *fileName)
 {
-//	bool isDfsTableSpace;
-//
-//	isDfsTableSpace = IsDfsTablespaceById(spcId);
-//	if (isDfsTableSpace)
-//	{
-//		const char *server = GetDfsTablespaceServer(spcId);
-//		const char *tableSpacePath = GetDfsTablespacePath(spcId);
-//		gopherFS connection = UfsGetConnection(server, tableSpacePath);
-//
-//		return remoteFileExists(connection, fileName);
-//	}
-
 	return localFileExists(fileName);
 }
 

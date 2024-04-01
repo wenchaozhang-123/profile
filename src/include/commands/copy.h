@@ -164,7 +164,6 @@ extern bool NextCopyFromRawFields(CopyFromState cstate,
 extern void CopyFromErrorCallback(void *arg);
 
 extern uint64 CopyFrom(CopyFromState cstate);
-//extern uint64 CopyFromDirectoryTable(CopyFromState cstate);
 
 extern DestReceiver *CreateCopyDestReceiver(void);
 

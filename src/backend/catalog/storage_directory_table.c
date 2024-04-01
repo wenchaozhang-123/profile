@@ -69,9 +69,6 @@ DirectoryTableDropStorage(Relation rel)
 	Oid			tablespaceoid;
 	char 	   *tablespace_name;
 
-//	if (Gp_role != GP_ROLE_DISPATCH)
-//		return;
-
 	dirTable = GetDirectoryTable(RelationGetRelid(rel));
 
 	/*
@@ -129,18 +126,6 @@ DirectoryTableDropStorage(Relation rel)
 	pendingDeleteFiles = pending;
 
 	pfree(filePath);
-
-	/*
-	 * TODO Only on DFS need do this
-	 * Make sure the connection to the corresponding tablespace has
-	 * been cached.
-	 *
-	 * FileDoDeletesActions->UfsFileUnlink is called outside of the
-	 * transaction, if we don't establish a connection here. we may
-	 * face the issus of accessing the catalog outside of the
-	 * transaction.
-	 */
-	//forceCacheUfsResource(dirTable->spcId);
 }
 
 void
@@ -161,14 +146,6 @@ FileAddCreatePendingEntry(Relation rel, Oid spcId, char *relativePath)
 	pending->next = pendingDeleteFiles;
 
 	pendingDeleteFiles = pending;
-
-
-	/*
-	 * TODO same as before
-	 * Make sure the spccache to the corresponding tablespace has
-	 * been cached.
-	 */
-	//forceCacheUfsResource(spcId);
 }
 
 void
@@ -189,13 +166,6 @@ FileAddDeletePendingEntry(Relation rel, Oid spcId, char *relativePath)
 	pending->next = pendingDeleteFiles;
 
 	pendingDeleteFiles = pending;
-
-	/*
-	 * TODO same as before
-	 * Make sure the spccache to the corresponding tablespace has
-	 * been cached.
-	 */
-	//forceCacheUfsResource(spcId);
 }
 
 void

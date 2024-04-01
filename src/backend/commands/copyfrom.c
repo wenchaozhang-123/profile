@@ -1136,11 +1136,6 @@ CopyFromDirectoryTable(CopyFromState cstate)
 			if (tupdesc)
 				pfree(tupdesc);
 
-//			if (UFileExists(dirTable->spcId, orgiFileName))
-//				ereport(ERROR,
-//							(errcode(ERRCODE_DUPLICATE_OBJECT),
-//						 	 errmsg("file \"%s\" already exists", relaFileName)));
-
 			if (UFileExists(dirTable->spcId, orgiFileName))
 			{
 				UFileUnlink(dirTable->spcId, orgiFileName);
