@@ -1207,10 +1207,16 @@ ProcessCopyDirectoryTableOptions(ParseState *pstate,
 			if (opts_out->tags)
 				ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
-							errmsg("conflicting or redundant options"),
-							parser_errposition(pstate, defel->location)));
+						 errmsg("conflicting or redundant options"),
+						 parser_errposition(pstate, defel->location)));
 			opts_out->tags = defGetString(defel);
 		}
+		else
+			ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("option \"%s\" not recognized",
+							   defel->defname),
+						 parser_errposition(pstate, defel->location)));
 	}
 
 	opts_out->eol_type = EOL_UNKNOWN;
