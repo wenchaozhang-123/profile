@@ -211,10 +211,10 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 		DistributionKeyElem *elem = makeNode(DistributionKeyElem);
 		elem->name = "relative_path";
 		if (gp_use_legacy_hashops)
-			opclassoid = get_legacy_cdbhash_opclass_for_base_type(25);
+			opclassoid = get_legacy_cdbhash_opclass_for_base_type(TEXTOID);
 
 		if (!OidIsValid(opclassoid))
-			opclassoid = cdb_default_distribution_opclass_for_type(25);
+			opclassoid = cdb_default_distribution_opclass_for_type(TEXTOID);
 
 		ht_opc = SearchSysCache1(CLAOID, ObjectIdGetDatum(opclassoid));
 		if (!HeapTupleIsValid(ht_opc))

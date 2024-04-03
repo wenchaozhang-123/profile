@@ -1782,7 +1782,7 @@ dumpTablespaces(PGconn *conn)
 						   "array_to_string(spcoptions, ', '),"
 						   "pg_catalog.shobj_description(oid, 'pg_tablespace'), "
 						   "(SELECT proname FROM pg_catalog.pg_proc"
-						   "   WHERE oid IN (SELECT spcfilehandler FROM pg_catalog.pg_tablespace)) "
+						   "   WHERE proname IN (SELECT spcfilehandler FROM pg_catalog.pg_tablespace)) "
 						   "AS spchandler "
 						   "FROM pg_catalog.pg_tablespace "
 						   "WHERE spcname !~ '^pg_' "

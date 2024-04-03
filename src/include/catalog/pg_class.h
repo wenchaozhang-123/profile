@@ -211,7 +211,7 @@ DECLARE_INDEX(pg_class_tblspc_relfilenode_index, 3455, on pg_class using btree(r
  */
 #define RELKIND_HAS_STORAGE(relkind) \
 	((relkind) == RELKIND_RELATION || \
-     (relkind) == RELKIND_DIRECTORY_TABLE || \
+	 (relkind) == RELKIND_DIRECTORY_TABLE || \
 	 (relkind) == RELKIND_INDEX || \
 	 (relkind) == RELKIND_SEQUENCE || \
 	 (relkind) == RELKIND_TOASTVALUE || \

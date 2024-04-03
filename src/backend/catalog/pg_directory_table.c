@@ -16,6 +16,7 @@
 #include "access/table.h"
 #include "catalog/indexing.h"
 #include "parser/parser.h"
+#include "parser/parse_func.h"
 #include "catalog/pg_directory_table.h"
 #include "catalog/pg_tablespace.h"
 #include "storage/ufile.h"
@@ -42,13 +43,13 @@ GetTablespaceFileHandler(Oid spcId)
 	HeapTuple tuple;
 	Datum datum;
 	bool isNull;
-	Oid	fileHandlerOid;
+	Oid  fileHandlerOid;
+	char *fileHandler;
 	Form_pg_tablespace tblspcForm;
 
 	tuple = SearchSysCache1(TABLESPACEOID, ObjectIdGetDatum(spcId));
 	if (!HeapTupleIsValid(tuple))
 		elog(ERROR, "cache lookup failed for table space %u", spcId);
-
 
 	tblspcForm = (Form_pg_tablespace) GETSTRUCT(tuple);
 	datum = SysCacheGetAttr(TABLESPACEOID,
@@ -57,7 +58,8 @@ GetTablespaceFileHandler(Oid spcId)
 							&isNull);
 	if (!isNull)
 	{
-		fileHandlerOid = DatumGetObjectId(datum);
+		fileHandler = pstrdup(NameStr(((Form_pg_tablespace) GETSTRUCT(tuple))->spcfilehandler));
+		fileHandlerOid = LookupFuncName(list_make1(fileHandler), 0, NULL, false);;
 		datum = OidFunctionCall0(fileHandlerOid);
 		currentFileAm = (FileAm *) DatumGetPointer(datum);
 		if (currentFileAm == NULL)

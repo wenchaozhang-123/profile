@@ -5028,7 +5028,7 @@ _copyAlterStorageServerStmt(const AlterStorageServerStmt *from)
 static DropStorageServerStmt *
 _copyDropStorageServerStmt(const DropStorageServerStmt *from)
 {
-	DropStorageServerStmt  *newnode = makeNode( DropStorageServerStmt);
+	DropStorageServerStmt  *newnode = makeNode(DropStorageServerStmt);
 
 	COPY_STRING_FIELD(servername);
 	COPY_SCALAR_FIELD(missing_ok);

@@ -257,7 +257,7 @@ SELECT relative_path, size, tag FROM dir_table2 ORDER BY 1;
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation4' WITH TAG 'nation';
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation5' WITH TAG 'nation' WITH TAG 'nation2';    -- fail
 SELECT relative_path, size, tag FROM dir_table1 ORDER BY 1;
-SELECT relative_path, content FROM directory_table('dir_table1');
+SELECT relative_path, content FROM directory_table('dir_table1') ORDER BY 1;
 
 COPY dir_table2 FROM '@abs_srcdir@/data/nation.csv';     -- fail
 COPY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation';  -- fail
@@ -271,7 +271,7 @@ COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation3' WITH TAG 'n
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation4' WITH TAG 'nation';
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation5' WITH TAG 'nation' WITH TAG 'nation2';    -- fail
 SELECT relative_path, size, tag FROM dir_table2 ORDER BY 1;
-SELECT relative_path, content FROM directory_table('dir_table2');
+SELECT relative_path, content FROM directory_table('dir_table2') ORDER BY 1;
 
 -- Test copy binary from directory table
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (format CSV);
@@ -396,89 +396,89 @@ COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_commit';
 COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_commit2' WITH TAG 'nation';
 
 COMMIT;
-SELECT relative_path, content FROM directory_table('dir_table4');
+SELECT relative_path, content FROM directory_table('dir_table4') ORDER BY 1;
 
 BEGIN;
 SELECT remove_file('dir_table4', 'nation_commit');
-SELECT relative_path, content FROM directory_table('dir_table4');
+SELECT relative_path, content FROM directory_table('dir_table4') ORDER BY 1;
 COMMIT;
-SELECT relative_path, content FROM directory_table('dir_table4');
+SELECT relative_path, content FROM directory_table('dir_table4') ORDER BY 1;
 
 BEGIN;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 UPDATE dir_table4 SET tag = 'nation_updated' WHERE relative_path = 'nation_commit2';
 COMMIT;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 
 -- Test transaction rollback of directory table manipulation
 
 BEGIN;
 COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_rollback';
-SELECT relative_path, content FROM directory_table('dir_table4');
+SELECT relative_path, content FROM directory_table('dir_table4') ORDER BY 1;
 ROLLBACK;
-SELECT relative_path, content FROM directory_table('dir_table4');
+SELECT relative_path, content FROM directory_table('dir_table4') ORDER BY 1;
 
 BEGIN;
 SELECT remove_file('dir_table4', 'nation_commit2');
-SELECT relative_path, content FROM directory_table('dir_table4');
+SELECT relative_path, content FROM directory_table('dir_table4') ORDER BY 1;
 ROLLBACK;
-SELECT relative_path, content FROM directory_table('dir_table4');
+SELECT relative_path, content FROM directory_table('dir_table4') ORDER BY 1;
 
 BEGIN;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_rollback2' WITH TAG 'nation';
 UPDATE dir_table4 SET tag = 'nation_updated' WHERE relative_path = 'nation_rollback2';
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 ROLLBACK;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 
 -- Test subtransaction commit of directory table manipulation
 BEGIN;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subcommit' WITH TAG 'nation';
 SAVEPOINT s1;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subcommit2';
 SAVEPOINT s2;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subcommit3';
 RELEASE SAVEPOINT s1;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 COMMIT;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 
 BEGIN;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 SELECT remove_file('dir_table4', 'nation_subcommit');
 SAVEPOINT s1;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subcommit';
 SAVEPOINT s2;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 RELEASE SAVEPOINT s1;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 COMMIT;
 
 BEGIN;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 SELECT remove_file('dir_table4', 'nation_subcommit');
 SAVEPOINT s1;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 SELECT remove_file('dir_table4', 'nation_subcommit2');
 SAVEPOINT s2;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 RELEASE SAVEPOINT s2;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 COMMIT;
 
 BEGIN;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 SELECT remove_file('dir_table4', 'nation_subcommit2');
 SAVEPOINT s1;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subcommit4';
 SAVEPOINT s2;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 ROLLBACK TO SAVEPOINT s1;
 COMMIT;
 
@@ -486,36 +486,36 @@ COMMIT;
 COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subrollback1';
 COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subrollback2';
 BEGIN;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subrollback3';
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 SAVEPOINT s1;
 SELECT remove_file('dir_table4', 'nation_subrollback1');
 SAVEPOINT s2;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 ROLLBACK;
 
 BEGIN;
 COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subrollback4';
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 SAVEPOINT s1;
 SELECT remove_file('dir_table4', 'nation_subrollback4');
 SAVEPOINT s2;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 RELEASE SAVEPOINT s1;
 ROLLBACK;
 
 BEGIN;
 SELECT remove_file('dir_table4', 'nation_subrollback2');
 COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subrollback5';
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 SAVEPOINT s1;
 SELECT remove_file('dir_table4', 'nation_subrollback5');
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 ROLLBACK TO SAVEPOINT s1;
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 COPY BINARY dir_table4 FROM '@abs_srcdir@/data/nation.csv' 'nation_subrollback6';
-SELECT relative_path, tag FROM dir_table4;
+SELECT relative_path, tag FROM dir_table4 ORDER BY 1;
 SAVEPOINT s2;
 ROLLBACK;
 

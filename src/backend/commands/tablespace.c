@@ -269,9 +269,10 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 	Oid			tablespaceoid;
 	char	   *location = NULL;
 	Oid			ownerId;
-	Oid			fileHandler = InvalidOid;
 	Datum		newOptions;
 	List       *nonContentOptions = NIL;
+	Oid		fileHandlerOid = InvalidOid;
+	char	*fileHandler = NULL;
 
 	/* Must be super user */
 	if (!superuser())
@@ -321,7 +322,17 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 			}
 			else if(strcmp(defel->defname, "handler") == 0)
 			{
-				fileHandler = lookup_tblspc_handler_func(defel);
+				char	*schemaname;
+				char	*funcname;
+
+				/* invalidate current handler function is valid */
+				fileHandlerOid = lookup_tblspc_handler_func(defel);
+
+				/* deconstruct the name list */
+				DeconstructQualifiedName((List *) defel->arg, &schemaname, &funcname);
+
+				if (funcname)
+					fileHandler = pstrdup(funcname);
 			}
 			else
 				nonContentOptions = lappend(nonContentOptions, defel);
@@ -427,9 +438,9 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 		ObjectIdGetDatum(ownerId);
 	nulls[Anum_pg_tablespace_spcacl - 1] = true;
 
-	if (OidIsValid(fileHandler))
+	if (OidIsValid(fileHandlerOid))
 	{
-		values[Anum_pg_tablespace_spcfilehandler - 1] = ObjectIdGetDatum(fileHandler);
+		values[Anum_pg_tablespace_spcfilehandler - 1] = DirectFunctionCall1(namein, CStringGetDatum(fileHandler));
 	}
 	else
 	{
