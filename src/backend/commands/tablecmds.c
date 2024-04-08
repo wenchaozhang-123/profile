@@ -820,9 +820,10 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 					 errmsg("specifying a table access method is not supported on a partitioned table")));
 
 	}
+	else if (relkind ==  relkind == RELKIND_DIRECTORY_TABLE)
+		accessMethod = DEFAULT_TABLE_ACCESS_METHOD;
 	else if (relkind == RELKIND_RELATION ||
 			 relkind == RELKIND_TOASTVALUE ||
-			 relkind == RELKIND_DIRECTORY_TABLE ||
 			 relkind == RELKIND_MATVIEW)
 		accessMethod = default_table_access_method;
 

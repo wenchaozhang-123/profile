@@ -3764,6 +3764,9 @@ aclcheck_error(AclResult aclerr, ObjectType objtype,
 					case OBJECT_STATISTIC_EXT:
 						msg = gettext_noop("permission denied for statistics object %s");
 						break;
+					case OBJECT_STORAGE_SERVER:
+						msg = gettext_noop("permission denied for storage server %s");
+						break;
 					case OBJECT_SUBSCRIPTION:
 						msg = gettext_noop("permission denied for subscription %s");
 						break;
@@ -3809,7 +3812,6 @@ aclcheck_error(AclResult aclerr, ObjectType objtype,
 					case OBJECT_TSTEMPLATE:
 					case OBJECT_USER_MAPPING:
 					case OBJECT_PROFILE:
-					case OBJECT_STORAGE_SERVER:
 					case OBJECT_STORAGE_USER_MAPPING:
 						elog(ERROR, "unsupported object type %d", objtype);
 				}

@@ -22,6 +22,9 @@
 #include "storage/ufile.h"
 #include "utils/builtins.h"
 #include "utils/syscache.h"
+#include "utils/varlena.h"
+
+typedef void (*File_handler) (void);
 
 typedef struct DirTableColumnDesc
 {
@@ -43,9 +46,13 @@ GetTablespaceFileHandler(Oid spcId)
 	HeapTuple tuple;
 	Datum datum;
 	bool isNull;
-	Oid  fileHandlerOid;
 	char *fileHandler;
+	List	*fileHandler_list;
 	Form_pg_tablespace tblspcForm;
+	void	   *libraryhandle;
+	char	   *prosrc;
+	char	   *probin;
+	File_handler file_handler;
 
 	tuple = SearchSysCache1(TABLESPACEOID, ObjectIdGetDatum(spcId));
 	if (!HeapTupleIsValid(tuple))
@@ -58,13 +65,28 @@ GetTablespaceFileHandler(Oid spcId)
 							&isNull);
 	if (!isNull)
 	{
-		fileHandler = pstrdup(NameStr(((Form_pg_tablespace) GETSTRUCT(tuple))->spcfilehandler));
-		fileHandlerOid = LookupFuncName(list_make1(fileHandler), 0, NULL, false);;
-		datum = OidFunctionCall0(fileHandlerOid);
-		currentFileAm = (FileAm *) DatumGetPointer(datum);
-		if (currentFileAm == NULL)
-			elog(ERROR, "tablespace file handler %u did not return a FileAm struct",
-				 		fileHandlerOid);
+		fileHandler = TextDatumGetCString(datum);
+
+		if (!SplitIdentifierString(fileHandler, ',', &fileHandler_list))
+			ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("invalid list syntax for \"spcfilehandler\" option")));
+
+		if (list_length(fileHandler_list) != 2)
+			ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("invalid syntax for \"handler\" option")));
+
+		probin = (char *) linitial(fileHandler_list);
+		prosrc = (char *) lsecond(fileHandler_list);
+
+		file_handler = (File_handler) load_external_function(probin, prosrc, true, &libraryhandle);
+
+		if (file_handler)
+			(*file_handler) ();
+
+		if (currentFileAm == NULL || currentFileAm == &localFileAm)
+			elog(ERROR, "tablespace file handler did not return a FileAm struct");
 	}
 	else
 	{

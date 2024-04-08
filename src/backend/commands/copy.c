@@ -1062,9 +1062,6 @@ ProcessCopyDirectoryTableOptions(ParseState *pstate,
 	if (opts_out == NULL)
 		opts_out = (CopyFormatOptions *) palloc0(sizeof(CopyFormatOptions));
 
-	opts_out->skip_foreign_partitions = false;
-
-	opts_out->delim_off = false;
 	opts_out->file_encoding = -1;
 
 	/* Extract options from the statement node tree */
@@ -1090,125 +1087,13 @@ ProcessCopyDirectoryTableOptions(ParseState *pstate,
 						 	 errmsg("format option is not allowed in copy binary from directory table."),
 							 parser_errposition(pstate, defel->location)));
 		}
-		else if (strcmp(defel->defname, "freeze") == 0)
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("freeze option is not allowed in copy binary from directory table."),
-						 parser_errposition(pstate, defel->location)));
-		}
-		else if (strcmp(defel->defname, "delimiter") == 0)
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("delimiter option is not allowed in copy binary from directory table."),
-						 parser_errposition(pstate, defel->location)));
-		}
-		else if (strcmp(defel->defname, "null") == 0)
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("null option is not allowed in copy binary from directory table."),
-						 parser_errposition(pstate, defel->location)));
-		}
-		else if (strcmp(defel->defname, "header") == 0)
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("header option is not allowed in copy binary from directory table."),
-						 parser_errposition(pstate, defel->location)));
-		}
-		else if (strcmp(defel->defname, "quote") == 0)
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("quote option is not allowed in copy binary from directory table."),
-						 parser_errposition(pstate, defel->location)));
-		}
-		else if (strcmp(defel->defname, "escape") == 0)
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("escape option is not allowed in copy binary from directory table."),
-						 parser_errposition(pstate, defel->location)));
-		}
-		else if (strcmp(defel->defname, "force_quote") == 0)
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("force_quote option is not allowed in copy binary from directory table."),
-						 parser_errposition(pstate, defel->location)));
-		}
-		else if (strcmp(defel->defname, "force_not_null") == 0)
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("force_not_null option is not allowed in copy binary from directory table."),
-						 parser_errposition(pstate, defel->location)));
-		}
-		else if (strcmp(defel->defname, "force_null") == 0)
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("force_null option is not allowed in copy binary from directory table."),
-						 parser_errposition(pstate, defel->location)));
-		}
-		else if (strcmp(defel->defname, "convert_selectively") == 0)
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("convert_selectively option is not allowed in copy binary from directory table."),
-						 parser_errposition(pstate, defel->location)));
-		}
-		else if (strcmp(defel->defname, "encoding") == 0)
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("encoding option is not allowed in copy binary from directory table."),
-						 parser_errposition(pstate, defel->location)));
-		}
-		else if (strcmp(defel->defname, "fill_missing_fields") == 0)
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("fill_missing_fields option is not allowed in copy binary from directory table."),
-						 parser_errposition(pstate, defel->location)));
-		}
-		else if (strcmp(defel->defname, "newline") == 0)
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("newline option is not allowed in copy binary from directory table."),
-						 parser_errposition(pstate, defel->location)));
-		}
-		else if (strcmp(defel->defname, "sreh") == 0)
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("sreh option is not allowed in copy binary from directory table."),
-						 parser_errposition(pstate, defel->location)));
-		}
-		else if (strcmp(defel->defname, "on_segment") == 0)
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("on_segment option is not allowed in copy binary from directory table."),
-						 parser_errposition(pstate, defel->location)));
-		}
-		else if (strcmp(defel->defname, "skip_foreign_partitions") == 0)
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("skip_foreign_partitions option is not allowed in copy binary from directory table."),
-						 parser_errposition(pstate, defel->location)));
-		}
 		else if (strcmp(defel->defname, "tag") == 0)
 		{
 			if (opts_out->tags)
 				ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("conflicting or redundant options"),
-						 parser_errposition(pstate, defel->location)));
+							errmsg("conflicting or redundant options"),
+							parser_errposition(pstate, defel->location)));
 			opts_out->tags = defGetString(defel);
 		}
 		else

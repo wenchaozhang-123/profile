@@ -1223,7 +1223,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 }
 
 /*
- * Setup to read tuples from a file for COPY FROM.
+ * Setup to read tuple from a file for COPY FROM.
  *
  * 'rel': Used as a template for the tuples
  * 'options': List of DefElem. See copy_opt_item in gram.y for selections.
@@ -1355,10 +1355,6 @@ BeginCopyFromDirectoryTable(ParseState *pstate,
 	for (attnum = 1; attnum <= num_phys_attrs; attnum++)
 	{
 		Form_pg_attribute att = TupleDescAttr(tupDesc, attnum - 1);
-
-		/* We don't need info for dropped attributes */
-		if (att->attisdropped)
-			continue;
 
 		/* Fetch the input function and typioparam info */
 		getTypeInputInfo(att->atttypid,

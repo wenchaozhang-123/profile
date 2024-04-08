@@ -37,17 +37,16 @@
  * redo.
  */
 
-typedef struct FileNodePendingDelete
+typedef struct UFileNodePendingDelete
 {
-	RelFileNode node;
 	char  relkind;
 	Oid   spcId;			/* directory table needs an extra tabpespace */
 	char *relativePath;
-} FileNodePendingDelete;
+} UFileNodePendingDelete;
 
 typedef struct PendingRelDeleteFile
 {
-	FileNodePendingDelete filenode;		/* relation that may need to be deleted */
+	UFileNodePendingDelete filenode;		/* relation that may need to be deleted */
 	bool		atCommit;		/* T=delete at commit; F=delete at abort */
 	int			nestLevel;		/* xact nesting level of request */
 	struct PendingRelDeleteFile *next;		/* linked-list link */
@@ -136,7 +135,6 @@ FileAddCreatePendingEntry(Relation rel, Oid spcId, char *relativePath)
 	/* Add the relation to the list of stuff to delete at abort */
 	pending = (PendingRelDeleteFile *)
 		MemoryContextAlloc(TopMemoryContext, sizeof(PendingRelDeleteFile));
-	pending->filenode.node = rel->rd_node;
 	pending->filenode.relkind = rel->rd_rel->relkind;
 	pending->filenode.relativePath = MemoryContextStrdup(TopMemoryContext, relativePath);
 	pending->filenode.spcId = spcId;

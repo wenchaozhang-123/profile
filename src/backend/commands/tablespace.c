@@ -121,7 +121,6 @@ static void ensure_tablespace_directory_is_empty(const Oid tablespaceoid, const 
 
 static void unlink_during_redo(Oid tablepace_oid_to_unlink);
 static void unlink_without_redo(Oid tablespace_oid_to_unlink);
-static Oid	lookup_tblspc_handler_func(DefElem *handler);
 
 /*
  * Each database using a table space is isolated into its own name space
@@ -271,7 +270,6 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 	Oid			ownerId;
 	Datum		newOptions;
 	List       *nonContentOptions = NIL;
-	Oid		fileHandlerOid = InvalidOid;
 	char	*fileHandler = NULL;
 
 	/* Must be super user */
@@ -322,17 +320,7 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 			}
 			else if(strcmp(defel->defname, "handler") == 0)
 			{
-				char	*schemaname;
-				char	*funcname;
-
-				/* invalidate current handler function is valid */
-				fileHandlerOid = lookup_tblspc_handler_func(defel);
-
-				/* deconstruct the name list */
-				DeconstructQualifiedName((List *) defel->arg, &schemaname, &funcname);
-
-				if (funcname)
-					fileHandler = pstrdup(funcname);
+				fileHandler = pstrdup(strVal(defel->arg));
 			}
 			else
 				nonContentOptions = lappend(nonContentOptions, defel);
@@ -438,9 +426,24 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 		ObjectIdGetDatum(ownerId);
 	nulls[Anum_pg_tablespace_spcacl - 1] = true;
 
-	if (OidIsValid(fileHandlerOid))
+	if (fileHandler)
 	{
-		values[Anum_pg_tablespace_spcfilehandler - 1] = DirectFunctionCall1(namein, CStringGetDatum(fileHandler));
+		List	*fileHandler_list;
+		char	*tmpFileHandler = NULL;
+
+		tmpFileHandler = pstrdup(fileHandler);
+
+		if (!SplitIdentifierString(tmpFileHandler, ',', &fileHandler_list))
+			ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("invalid list syntax for \"spcfilehandler\" option")));
+
+		if (list_length(fileHandler_list) != 2)
+			ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("invalid syntax for \"handler\" option")));
+
+		values[Anum_pg_tablespace_spcfilehandler - 1] = CStringGetTextDatum(fileHandler);
 	}
 	else
 	{
@@ -1012,30 +1015,6 @@ unlink_during_redo(Oid tablepace_oid_to_unlink)
 						tablepace_oid_to_unlink), 
 					errhint("You can remove the directories manually if necessary.")));
 	}
-}
-
-/*
- * Convert a handler function name passed from the parser to an Oid.
- */
-static Oid
-lookup_tblspc_handler_func(DefElem *handler)
-{
-	Oid 		handlerOid;
-
-	if (handler == NULL || handler->arg == NULL)
-		return InvalidOid;
-
-	/* handlers have no arguments */
-	handlerOid = LookupFuncName((List *) handler->arg, 0, NULL, false);
-
-	/* check that handler has correct return type */
-	if (get_func_rettype(handlerOid) != TBLSPC_HANDLEROID)
-		ereport(ERROR,
-				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-				 errmsg("function %s must return type %s",
-						NameListToString((List *) handler->arg), "tblspc_handler")));
-
-	return handlerOid;
 }
 
 /*

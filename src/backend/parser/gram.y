@@ -7192,7 +7192,7 @@ OptServer:      SERVER name             { $$ = makeDefElem("server", (Node *)mak
         ;
 
 OptFileHandler:
-			HANDLER handler_name        { $$ = makeDefElem("handler", (Node *)$2, @1); }
+			HANDLER Sconst              { $$ = makeDefElem("handler", (Node *)makeString($2), @1); }
 			| /* EMPTY */               { $$ = NULL; }
 		;
 
