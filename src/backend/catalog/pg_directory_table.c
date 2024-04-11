@@ -19,12 +19,20 @@
 #include "parser/parse_func.h"
 #include "catalog/pg_directory_table.h"
 #include "catalog/pg_tablespace.h"
-#include "storage/ufile.h"
 #include "utils/builtins.h"
+#include "utils/inval.h"
 #include "utils/syscache.h"
 #include "utils/varlena.h"
 
-typedef void (*File_handler) (void);
+typedef FileAm* (*File_handler) (void);
+/* Hash table for tablespace file handler */
+static HTAB *TableSpaceFileHandlerHash = NULL;
+
+typedef struct TableSpaceFileAmEntry
+{
+	Oid 	spcId;	/* tablespace oid */
+	FileAm  *spcAm;	/* tablespace file am */
+} TableSpaceFileAmEntry;
 
 typedef struct DirTableColumnDesc
 {
@@ -41,6 +49,44 @@ static const DirTableColumnDesc dirTableColumns[] = {
 };
 
 static void
+invalidateTableSpaceFileAmCallBack(Datum arg, int cacheid, uint32 hashvalue)
+{
+	HASH_SEQ_STATUS	status;
+	TableSpaceFileAmEntry	*fileAmEntry;
+
+	hash_seq_init(&status, TableSpaceFileHandlerHash);
+	while ((fileAmEntry = (TableSpaceFileAmEntry *) hash_seq_search(&status)) != NULL)
+	{
+		hash_search(TableSpaceFileHandlerHash,
+					(void *) &fileAmEntry->spcId,
+					HASH_REMOVE,
+					NULL);
+	}
+}
+
+static void
+InitializeTableSpaceFileHandlerHash(void)
+{
+	HASHCTL		ctl;
+
+	/* Initialize the hash table. */
+	ctl.keysize = sizeof(Oid);
+	ctl.entrysize = sizeof(TableSpaceFileAmEntry);
+	TableSpaceFileHandlerHash =
+		hash_create("TableSpace File Handler hash", 8, &ctl,
+			  		HASH_ELEM | HASH_BLOBS);
+
+	/* Make sure we've initialized CacheMemoryContext. */
+	if (!CacheMemoryContext)
+		CreateCacheMemoryContext();
+
+	/* Watch for invalidation events. */
+	CacheRegisterSyscacheCallback(TABLESPACEOID,
+								  invalidateTableSpaceFileAmCallBack,
+								  (Datum) 0);
+}
+
+FileAm *
 GetTablespaceFileHandler(Oid spcId)
 {
 	HeapTuple tuple;
@@ -53,6 +99,20 @@ GetTablespaceFileHandler(Oid spcId)
 	char	   *prosrc;
 	char	   *probin;
 	File_handler file_handler;
+	TableSpaceFileAmEntry *spcAmEntry;
+	FileAm	*spcAm;
+	bool 	found;
+
+	if (!TableSpaceFileHandlerHash)
+		InitializeTableSpaceFileHandlerHash();
+
+	spcAmEntry = (TableSpaceFileAmEntry *) hash_search(TableSpaceFileHandlerHash,
+													   (void *) &spcId,
+													   HASH_FIND,
+													   &found);
+
+	if (found)
+		return spcAmEntry->spcAm;
 
 	tuple = SearchSysCache1(TABLESPACEOID, ObjectIdGetDatum(spcId));
 	if (!HeapTupleIsValid(tuple))
@@ -83,27 +143,42 @@ GetTablespaceFileHandler(Oid spcId)
 		file_handler = (File_handler) load_external_function(probin, prosrc, true, &libraryhandle);
 
 		if (file_handler)
-			(*file_handler) ();
+			spcAm = (*file_handler) ();
 
-		if (currentFileAm == NULL || currentFileAm == &localFileAm)
+		if (spcAm == NULL || spcAm == &localFileAm)
 			elog(ERROR, "tablespace file handler did not return a FileAm struct");
 	}
 	else
 	{
-		currentFileAm = &localFileAm;
+		spcAm = &localFileAm;
 	}
 
 	ReleaseSysCache(tuple);
 
-	Assert(currentFileAm != NULL);
-	Assert(currentFileAm->close != NULL);
-	Assert(currentFileAm->read != NULL);
-	Assert(currentFileAm->write != NULL);
-	Assert(currentFileAm->size != NULL);
-	Assert(currentFileAm->name != NULL);
-	Assert(currentFileAm->getLastError != NULL);
+	Assert(spcAm != NULL);
+	Assert(spcAm->open != NULL);
+	Assert(spcAm->close != NULL);
+	Assert(spcAm->read != NULL);
+	Assert(spcAm->write != NULL);
+	Assert(spcAm->size != NULL);
+	Assert(spcAm->unlink != NULL);
+	Assert(spcAm->formatFileName != NULL);
+	Assert(spcAm->exists != NULL);
+	Assert(spcAm->name != NULL);
+	Assert(spcAm->getLastError != NULL);
 
-	return;
+	spcAmEntry = (TableSpaceFileAmEntry *) hash_search(TableSpaceFileHandlerHash,
+													   (void *) &spcId,
+													   HASH_ENTER,
+													   &found);
+	if (found)
+		ereport(ERROR,
+				(errcode(ERRCODE_DUPLICATE_OBJECT),
+				 errmsg("extra tablespace oid \"%u\" already exists", spcId)));
+
+	spcAmEntry->spcAm = spcAm;
+
+	return spcAm;
 }
 
 /*

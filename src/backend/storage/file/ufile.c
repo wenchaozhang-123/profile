@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "catalog/pg_directory_table.h"
 #include "catalog/pg_tablespace.h"
 #include "cdb/cdbvars.h"
 #include "commands/tablespace.h"
@@ -37,24 +38,29 @@ typedef struct LocalFile
 	off_t offset;
 } LocalFile;
 
-static UFile *localFileOpen(Oid spcId, const char *fileName,
-							int fileFlags, char *errorMessage, int errorMessageSize);
+static UFile *localFileOpen(const char *fileName, int fileFlags,
+							char *errorMessage, int errorMessageSize);
 static void localFileClose(UFile *file);
 static int	localFileRead(UFile *file, char *buffer, int amount);
 static int	localFileWrite(UFile *file, char *buffer, int amount);
 static off_t localFileSize(UFile *file);
-static void localFileUnlink(const char *fileName);
-static bool localFileExists(const char *fileName);
+static void localFileUnlink(Oid spcId, const char *fileName);
+static char *localFormatFileName(RelFileNode *relFileNode, const char *fileName);
+static bool localFileExists(Oid spcId, const char *fileName);
 static const char *localFileName(UFile *file);
 static const char *localGetLastError(void);
 
 static char localFileErrorStr[UFILE_ERROR_SIZE];
 
 struct FileAm localFileAm = {
+	.open = localFileOpen,
 	.close = localFileClose,
 	.read = localFileRead,
 	.write = localFileWrite,
 	.size = localFileSize,
+	.unlink = localFileUnlink,
+	.formatFileName = localFormatFileName,
+	.exists = localFileExists,
 	.name = localFileName,
 	.getLastError = localGetLastError,
 };
@@ -62,38 +68,7 @@ struct FileAm localFileAm = {
 struct FileAm *currentFileAm = &localFileAm;
 
 static UFile *
-UFileOpenInternal(Oid spcId,
-				  bool isNormalfile,
-				  const char *fileName,
-				  int fileFlags,
-				  char *errorMessage,
-				  int errorMessageSize)
-{
-	return localFileOpen(spcId,
-						 fileName,
-						 fileFlags,
-						 errorMessage,
-						 errorMessageSize);
-}
-
-UFile *
-UFileOpen(Oid spcId,
-		  const char *fileName,
-		  int fileFlags,
-		  char *errorMessage,
-		  int errorMessageSize)
-{
-	return UFileOpenInternal(spcId,
-							 true,
-							 fileName,
-							 fileFlags,
-							 errorMessage,
-							 errorMessageSize);
-}
-
-static UFile *
-localFileOpen(Oid spcId,
-			  const char *fileName,
+localFileOpen(const char *fileName,
 			  int fileFlags,
 			  char *errorMessage,
 			  int errorMessageSize)
@@ -266,7 +241,7 @@ destory_local_file_directories(const char* directoryName)
 }
 
 static void
-localFileUnlink(const char *fileName)
+localFileUnlink(Oid spcId, const char *fileName)
 {
 	struct stat st;
 
@@ -298,8 +273,19 @@ localFileUnlink(const char *fileName)
 
 }
 
+static char *
+localFormatFileName(RelFileNode *relFileNode, const char *fileName)
+{
+	if (relFileNode->spcNode == DEFAULTTABLESPACE_OID)
+		return psprintf("base/%u/%s", relFileNode->dbNode, fileName);
+	else
+		return psprintf("pg_tblspc/%u/%s/%u/"UINT64_FORMAT"_dirtable/%s",
+		relFileNode->spcNode, GP_TABLESPACE_VERSION_DIRECTORY,
+		relFileNode->dbNode, relFileNode->relNode, fileName);
+}
+
 static bool
-localFileExists(const char *fileName)
+localFileExists(Oid spcId, const char *fileName)
 {
 	struct stat fileStats;
 
@@ -328,6 +314,22 @@ static const char *
 localGetLastError(void)
 {
 	return localFileErrorStr;
+}
+
+UFile *
+UFileOpen(Oid spcId,
+		  const char *fileName,
+		  int fileFlags,
+		  char *errorMessage,
+		  int errorMessageSize)
+{
+	UFile *ufile;
+	FileAm *fileAm;
+
+	fileAm = GetTablespaceFileHandler(spcId);
+	ufile = fileAm->open(fileName, fileFlags, errorMessage, errorMessageSize);
+
+	return ufile;
 }
 
 void
@@ -362,23 +364,34 @@ UFileName(UFile *file)
 	return file->methods->name(file);
 }
 
-
-static void
-UFileUnlinkInternal(Oid spcId, bool isNormalFile, const char *fileName)
-{
-	localFileUnlink(fileName);
-}
-
 void
 UFileUnlink(Oid spcId, const char *fileName)
 {
-	return UFileUnlinkInternal(spcId, true, fileName);
+	FileAm *fileAm;
+
+	fileAm = GetTablespaceFileHandler(spcId);
+
+	fileAm->unlink(spcId, fileName);
+}
+
+char *
+UFileFormatFileName(RelFileNode *relFileNode, const char *fileName)
+{
+	FileAm *fileAm;
+
+	fileAm = GetTablespaceFileHandler(relFileNode->spcNode);
+
+	return fileAm->formatFileName(relFileNode, fileName);
 }
 
 bool
 UFileExists(Oid spcId, const char *fileName)
 {
-	return localFileExists(fileName);
+	FileAm *fileAm;
+
+	fileAm = GetTablespaceFileHandler(spcId);
+
+	return fileAm->exists(spcId, fileName);
 }
 
 const char *
@@ -387,13 +400,3 @@ UFileGetLastError(UFile *file)
 	return file->methods->getLastError();
 }
 
-char *
-formatLocalFileName(RelFileNode *relFileNode, const char *fileName)
-{
-	if (relFileNode->spcNode == DEFAULTTABLESPACE_OID)
-		return psprintf("base/%u/%s", relFileNode->dbNode, fileName);
-	else
-		return psprintf("pg_tblspc/%u/%s/%u/"UINT64_FORMAT"_dirtable/%s",
-						relFileNode->spcNode, GP_TABLESPACE_VERSION_DIRECTORY,
-						relFileNode->dbNode, relFileNode->relNode, fileName);
-}

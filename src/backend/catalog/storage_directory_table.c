@@ -113,7 +113,6 @@ DirectoryTableDropStorage(Relation rel)
 	/* Add the relation to the list of stuff to delete at commit */
 	pending = (PendingRelDeleteFile *)
 		MemoryContextAlloc(TopMemoryContext, sizeof(PendingRelDeleteFile));
-	pending->filenode.node = rel->rd_node;
 	pending->filenode.relkind = rel->rd_rel->relkind;
 	pending->filenode.relativePath = MemoryContextStrdup(TopMemoryContext, filePath);
 	pending->filenode.spcId = dirTable->spcId;
@@ -154,7 +153,6 @@ FileAddDeletePendingEntry(Relation rel, Oid spcId, char *relativePath)
 	/* Add the relation to the list of stuff to delete at abort */
 	pending = (PendingRelDeleteFile *)
 		MemoryContextAlloc(TopMemoryContext, sizeof(PendingRelDeleteFile));
-	pending->filenode.node = rel->rd_node;
 	pending->filenode.relkind = rel->rd_rel->relkind;
 	pending->filenode.relativePath = MemoryContextStrdup(TopMemoryContext, relativePath);
 	pending->filenode.spcId = spcId;

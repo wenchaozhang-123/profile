@@ -18,10 +18,15 @@ struct UFile;
 
 typedef struct FileAm
 {
+	struct UFile* (*open) (const char *fileName, int fileFlags,
+						   char *errorMessage, int errorMessageSize);
 	void (*close) (struct UFile *file);
 	int (*read) (struct UFile *file, char *buffer, int amount);
 	int (*write) (struct UFile *file, char *buffer, int amount);
 	int64_t (*size) (struct UFile *file);
+	void (*unlink) (Oid spcId, const char *fileName);
+	char* (*formatFileName) (RelFileNode *relFileNode, const char *fileName);
+	bool (*exists) (Oid spcId, const char *fileName);
 	const char *(*name) (struct UFile *file);
 	const char *(*getLastError) (void);
 } FileAm;
@@ -45,11 +50,10 @@ extern off_t UFileSize(UFile *file);
 extern const char *UFileName(UFile *file);
 
 extern void UFileUnlink(Oid spcId, const char *fileName);
+extern char* UFileFormatFileName(RelFileNode *relFileNode, const char *fileName);
 extern bool UFileExists(Oid spcId, const char *fileName);
 
 extern const char *UFileGetLastError(UFile *file);
-
-extern char *formatLocalFileName(RelFileNode *relFileNode, const char *fileName);
 
 extern struct FileAm localFileAm;
 extern struct FileAm *currentFileAm;

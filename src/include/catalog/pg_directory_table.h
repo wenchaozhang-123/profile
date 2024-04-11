@@ -20,6 +20,7 @@
 #include "catalog/genbki.h"
 #include "catalog/pg_directory_table_d.h"
 #include "nodes/parsenodes.h"
+#include "storage/ufile.h"
 
 /* ----------------
  *		pg_directory_table definition.  cpp turns this into
@@ -63,5 +64,6 @@ extern DirectoryTable *GetDirectoryTable(Oid relId);
 extern bool RelationIsDirectoryTable(Oid relId);
 extern List *GetDirectoryTableBuiltinColumns(void);
 extern void RemoveDirectoryTableEntry(Oid relId);
+extern FileAm *GetTablespaceFileHandler(Oid spcId);
 
 #endif /* PG_DIRECTORY_TABLE_H */

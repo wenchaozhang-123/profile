@@ -857,7 +857,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 	/* Assemble directory table file location. */
 	relaFileName = trimFilePath(glob_copystmt->dirfilename, '/');
 	dirTable = GetDirectoryTable(RelationGetRelid(cstate->rel));
-	orgiFileName = formatLocalFileName(&cstate->rel->rd_node, relaFileName);
+	orgiFileName = UFileFormatFileName(&cstate->rel->rd_node, relaFileName);
 
 	/*
 	 * build tupledesc and slot for copy from
