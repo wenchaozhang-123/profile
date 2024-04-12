@@ -68,6 +68,7 @@
 #include "utils/date.h"
 #include "utils/datetime.h"
 #include "utils/numeric.h"
+#include "utils/varlena.h"
 #include "utils/xml.h"
 #include "cdb/cdbutil.h"
 #include "cdb/cdbvars.h"
@@ -643,7 +644,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 %type <boolean> constraints_set_mode
 %type <str>		OptTableSpace OptConsTableSpace
 %type <defelt>  OptServer
-%type <defelt>  OptFileHandler
+%type <str>     OptFileHandler
 
 %type <rolespec> OptTableSpaceOwner
 %type <node>    DistributedBy OptDistributedBy 
@@ -7164,6 +7165,8 @@ opt_procedural:
 CreateTableSpaceStmt: CREATE TABLESPACE name OptTableSpaceOwner LOCATION Sconst opt_reloptions OptServer OptFileHandler
 				{
 					CreateTableSpaceStmt *n = makeNode(CreateTableSpaceStmt);
+					List	*fileHandler_list;
+					char    *tmpfilehandler;
 					n->tablespacename = $3;
 					n->owner = $4;
 					n->location = $6;
@@ -7175,10 +7178,22 @@ CreateTableSpaceStmt: CREATE TABLESPACE name OptTableSpaceOwner LOCATION Sconst 
 						n->options = lappend(n->options,
 									makeDefElem("path", (Node *)makeString($6), @6));
 					}
-					if ($9 != NULL)
+					n->filehandler = $9;
+					if (n->filehandler)
 					{
-					    n->options = lappend(n->options, $9);
+					    tmpfilehandler = pstrdup(n->filehandler);
+					    if (tmpfilehandler && !SplitIdentifierString(tmpfilehandler, ',', &fileHandler_list))
+					        ereport(ERROR,
+					                    (errcode(ERRCODE_SYNTAX_ERROR),
+					                     errmsg("invalid list syntax for \"handler\""),
+					                     parser_errposition(@9)));
+                        if (tmpfilehandler && list_length(fileHandler_list) != 2)
+                            ereport(ERROR,
+                                        (errcode(ERRCODE_SYNTAX_ERROR),
+                                         errmsg("invalid list syntax for \"handler\""),
+                                         parser_errposition(@9)));
 					}
+
 					$$ = (Node *) n;
 				}
 		;
@@ -7192,7 +7207,8 @@ OptServer:      SERVER name             { $$ = makeDefElem("server", (Node *)mak
         ;
 
 OptFileHandler:
-			HANDLER Sconst              { $$ = makeDefElem("handler", (Node *)makeString($2), @1); }
+			HANDLER Sconst              { $$ = $2; }
+			| HANDLER                   { $$ = NULL; }
 			| /* EMPTY */               { $$ = NULL; }
 		;
 
@@ -8163,7 +8179,6 @@ CreateDirectoryTableStmt:
                     CreateDirectoryTableStmt *n = makeNode(CreateDirectoryTableStmt);
                     $4->relpersistence = RELPERSISTENCE_PERMANENT;
                     n->base.relation = $4;
-                    n->base.tableElts = GetDirectoryTableBuiltinColumns();
                     n->base.inhRelations = NIL;
                     n->base.ofTypename = NULL;
                     n->base.constraints = NIL;
@@ -8194,7 +8209,6 @@ CreateDirectoryTableStmt:
                     CreateDirectoryTableStmt *n = makeNode(CreateDirectoryTableStmt);
                     $7->relpersistence = RELPERSISTENCE_PERMANENT;
                     n->base.relation = $7;
-                    n->base.tableElts = GetDirectoryTableBuiltinColumns();
                     n->base.inhRelations = NIL;
                     n->base.ofTypename = NULL;
                     n->base.constraints = NIL;

@@ -2032,6 +2032,7 @@ _equalCreateTableSpaceStmt(const CreateTableSpaceStmt *a, const CreateTableSpace
 	COMPARE_NODE_FIELD(owner);
 	COMPARE_STRING_FIELD(location);
 	COMPARE_NODE_FIELD(options);
+	COMPARE_STRING_FIELD(filehandler);
 
 	return true;
 }

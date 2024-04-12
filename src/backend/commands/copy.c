@@ -393,8 +393,7 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 			PreventCommandIfReadOnly("COPY FROM");
 
 		cstate = BeginCopyFrom(pstate, rel, whereClause,
-							   stmt->filename,
-							   stmt->is_program,
+							   stmt->filename, stmt->is_program,
 							   NULL, NULL, stmt->attlist, options);
 
 		/*
@@ -1091,9 +1090,9 @@ ProcessCopyDirectoryTableOptions(ParseState *pstate,
 		{
 			if (opts_out->tags)
 				ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-							errmsg("conflicting or redundant options"),
-							parser_errposition(pstate, defel->location)));
+								(errcode(ERRCODE_SYNTAX_ERROR),
+						 		 errmsg("conflicting or redundant options"),
+						 		 parser_errposition(pstate, defel->location)));
 			opts_out->tags = defGetString(defel);
 		}
 		else

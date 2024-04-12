@@ -283,12 +283,14 @@ SET
 SET
 SET
 SET
-psql:data/minirepro.sql:45: ERROR:  only shared relations can be placed in pg_global tablespace
-psql:data/minirepro.sql:47: ERROR:  permission denied: "pg_tablespace" is a system catalog
-psql:data/minirepro.sql:55: ERROR:  permission denied: "pg_tablespace" is a system catalog
-psql:data/minirepro.sql:63: ERROR:  permission denied: "pg_tablespace" is a system catalog
+psql:data/minirepro.sql:46: ERROR:  only shared relations can be placed in pg_global tablespace
+psql:data/minirepro.sql:48: ERROR:  permission denied: "pg_tablespace" is a system catalog
+psql:data/minirepro.sql:56: ERROR:  permission denied: "pg_tablespace" is a system catalog
+psql:data/minirepro.sql:64: ERROR:  permission denied: "pg_tablespace" is a system catalog
 SET
 UPDATE 1
+DELETE 1
+INSERT 0 1
 DELETE 1
 INSERT 0 1
 DELETE 1
@@ -341,6 +343,7 @@ from pg_statistic where starelid='pg_tablespace'::regclass;
          4 | f          |           1 |        0 |           0 |        0 |        0 |        0 |        0 |        0 |      0 |      0 |      0 |      0 |      0 |        0 |        0 |        0 |        0 |        0 |             |             |             |             |             |                        |            |            |            | 
          5 | f          |           1 |        0 |           0 |        0 |        0 |        0 |        0 |        0 |      0 |      0 |      0 |      0 |      0 |        0 |        0 |        0 |        0 |        0 |             |             |             |             |             |                        |            |            |            | 
          6 | f          |           1 |        0 |           0 |        0 |        0 |        0 |        0 |        0 |      0 |      0 |      0 |      0 |      0 |        0 |        0 |        0 |        0 |        0 |             |             |             |             |             |                        |            |            |            | 
-(6 rows)
+         7 | f          |           1 |        0 |           0 |        0 |        0 |        0 |        0 |        0 |      0 |      0 |      0 |      0 |      0 |        0 |        0 |        0 |        0 |        0 |             |             |             |             |             |                        |            |            |            | 
+(7 rows)
 
 \! rm data/minirepro_q.sql

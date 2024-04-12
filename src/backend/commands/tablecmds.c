@@ -43,6 +43,7 @@
 #include "catalog/pg_compression.h"
 #include "catalog/pg_constraint.h"
 #include "catalog/pg_depend.h"
+#include "catalog/pg_directory_table.h"
 #include "catalog/pg_foreign_table.h"
 #include "catalog/pg_inherits.h"
 #include "catalog/pg_namespace.h"
@@ -636,17 +637,25 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 */
 	schema = NIL;
 	cooked_constraints = NIL;
-	foreach(listptr, stmt->tableElts)
+	if (relkind == RELKIND_DIRECTORY_TABLE)
 	{
-		Node	   *node = lfirst(listptr);
-
-		if (IsA(node, CookedConstraint))
+		schema = GetDirectoryTableSchema();
+		stmt->distributedBy = GetDirectoryTableDistributedBy();
+	}
+	else
+	{
+		foreach(listptr, stmt->tableElts)
 		{
-			Assert(Gp_role == GP_ROLE_EXECUTE);
-			cooked_constraints = lappend(cooked_constraints, node);
+			Node	   *node = lfirst(listptr);
+
+			if (IsA(node, CookedConstraint))
+			{
+				Assert(Gp_role == GP_ROLE_EXECUTE);
+				cooked_constraints = lappend(cooked_constraints, node);
+			}
+			else
+				schema = lappend(schema, node);
 		}
-		else
-			schema = lappend(schema, node);
 	}
 
 	/*
@@ -741,6 +750,12 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	}
 
 	/*
+	 * Directory table never has partitions.
+	 */
+	AssertImply(relkind == RELKIND_DIRECTORY_TABLE, !partitioned);
+	AssertImply(relkind == RELKIND_DIRECTORY_TABLE, !stmt->inhRelations);
+
+	/*
 	 * Select tablespace to use: an explicitly indicated one, or (in the case
 	 * of a partitioned table) the parent's, if it has one.
 	 */
@@ -810,7 +825,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 * If the statement hasn't specified an access method, but we're defining
 	 * a type of relation that needs one, use the default.
 	 */
-	if (stmt->accessMethod != NULL)
+	if (stmt->accessMethod != NULL && relkind != RELKIND_DIRECTORY_TABLE)
 	{
 		accessMethod = stmt->accessMethod;
 

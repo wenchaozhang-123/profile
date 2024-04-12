@@ -14,11 +14,13 @@
 
 #include "storage/relfilenode.h"
 
+#define UFILE_ERROR_SIZE	1024
+
 struct UFile;
 
 typedef struct FileAm
 {
-	struct UFile* (*open) (const char *fileName, int fileFlags,
+	struct UFile* (*open) (Oid spcId, const char *fileName, int fileFlags,
 						   char *errorMessage, int errorMessageSize);
 	void (*close) (struct UFile *file);
 	int (*read) (struct UFile *file, char *buffer, int amount);
@@ -56,6 +58,5 @@ extern bool UFileExists(Oid spcId, const char *fileName);
 extern const char *UFileGetLastError(UFile *file);
 
 extern struct FileAm localFileAm;
-extern struct FileAm *currentFileAm;
 
 #endif //UFILE_H

@@ -270,7 +270,7 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 	Oid			ownerId;
 	Datum		newOptions;
 	List       *nonContentOptions = NIL;
-	char	*fileHandler = NULL;
+	char       *fileHandler = NULL;
 
 	/* Must be super user */
 	if (!superuser())
@@ -318,10 +318,6 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 				else if (contentId == GpIdentity.segindex)
 					location = pstrdup(strVal(defel->arg));
 			}
-			else if(strcmp(defel->defname, "handler") == 0)
-			{
-				fileHandler = pstrdup(strVal(defel->arg));
-			}
 			else
 				nonContentOptions = lappend(nonContentOptions, defel);
 		}
@@ -329,6 +325,9 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 
 	if (!location)
 		location = pstrdup(stmt->location);
+
+	if (stmt->filehandler)
+		fileHandler = pstrdup(stmt->filehandler);
 
 	/* Unix-ify the offered path, and strip any trailing slashes */
 	canonicalize_path(location);
@@ -429,25 +428,21 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 	if (fileHandler)
 	{
 		List	*fileHandler_list;
-		char	*tmpFileHandler = NULL;
+		char	*spcfilehandlerbin = NULL;
+		char	*spcfilehandlersrc = NULL;
 
-		tmpFileHandler = pstrdup(fileHandler);
+		SplitIdentifierString(fileHandler, ',', &fileHandler_list);
 
-		if (!SplitIdentifierString(tmpFileHandler, ',', &fileHandler_list))
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("invalid list syntax for \"spcfilehandler\" option")));
+		spcfilehandlerbin = (char *) linitial(fileHandler_list);
+		spcfilehandlersrc = (char *) lsecond(fileHandler_list);
 
-		if (list_length(fileHandler_list) != 2)
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("invalid syntax for \"handler\" option")));
-
-		values[Anum_pg_tablespace_spcfilehandler - 1] = CStringGetTextDatum(fileHandler);
+		values[Anum_pg_tablespace_spcfilehandlerbin - 1] = CStringGetTextDatum(spcfilehandlerbin);
+		values[Anum_pg_tablespace_spcfilehandlersrc - 1] = CStringGetTextDatum(spcfilehandlersrc);
 	}
 	else
 	{
-		nulls[Anum_pg_tablespace_spcfilehandler - 1] = true;
+		nulls[Anum_pg_tablespace_spcfilehandlersrc - 1] = true;
+		nulls[Anum_pg_tablespace_spcfilehandlerbin - 1] = true;
 	}
 
 	/* Generate new proposed spcoptions (text array) */

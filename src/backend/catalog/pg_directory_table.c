@@ -15,12 +15,17 @@
 #include "access/htup_details.h"
 #include "access/table.h"
 #include "catalog/indexing.h"
+#include "catalog/pg_opclass.h"
+#include "cdb/cdbhash.h"
+#include "cdb/cdbutil.h"
 #include "parser/parser.h"
 #include "parser/parse_func.h"
 #include "catalog/pg_directory_table.h"
+#include "catalog/gp_distribution_policy.h"
 #include "catalog/pg_tablespace.h"
 #include "utils/builtins.h"
 #include "utils/inval.h"
+#include "utils/lsyscache.h"
 #include "utils/syscache.h"
 #include "utils/varlena.h"
 
@@ -31,25 +36,11 @@ static HTAB *TableSpaceFileHandlerHash = NULL;
 typedef struct TableSpaceFileAmEntry
 {
 	Oid 	spcId;	/* tablespace oid */
-	FileAm  *spcAm;	/* tablespace file am */
+	FileAm  *fileAm; /* tablespace file am */
 } TableSpaceFileAmEntry;
 
-typedef struct DirTableColumnDesc
-{
-	const char *colName;
-	const char *typName;
-} DirTableColumnDesc;
-
-static const DirTableColumnDesc dirTableColumns[] = {
-	{"relative_path", "text"},
-	{"size", "int8"},
-	{"last_modified", "timestamptz"},
-	{"md5", "text"},
-	{"tag", "text"}
-};
-
 static void
-invalidateTableSpaceFileAmCallBack(Datum arg, int cacheid, uint32 hashvalue)
+InvalidateTableSpaceFileAmCallBack(Datum arg, int cacheid, uint32 hashvalue)
 {
 	HASH_SEQ_STATUS	status;
 	TableSpaceFileAmEntry	*fileAmEntry;
@@ -82,7 +73,7 @@ InitializeTableSpaceFileHandlerHash(void)
 
 	/* Watch for invalidation events. */
 	CacheRegisterSyscacheCallback(TABLESPACEOID,
-								  invalidateTableSpaceFileAmCallBack,
+								  InvalidateTableSpaceFileAmCallBack,
 								  (Datum) 0);
 }
 
@@ -92,27 +83,25 @@ GetTablespaceFileHandler(Oid spcId)
 	HeapTuple tuple;
 	Datum datum;
 	bool isNull;
-	char *fileHandler;
-	List	*fileHandler_list;
+	char *filehandlersrc;
+	char *filehandlerbin;
 	Form_pg_tablespace tblspcForm;
-	void	   *libraryhandle;
-	char	   *prosrc;
-	char	   *probin;
+	void *libraryhandle;
 	File_handler file_handler;
-	TableSpaceFileAmEntry *spcAmEntry;
-	FileAm	*spcAm;
-	bool 	found;
+	TableSpaceFileAmEntry *fileAmEntry;
+	FileAm *fileAm = NULL;
+	bool found;
 
 	if (!TableSpaceFileHandlerHash)
 		InitializeTableSpaceFileHandlerHash();
 
-	spcAmEntry = (TableSpaceFileAmEntry *) hash_search(TableSpaceFileHandlerHash,
+	fileAmEntry = (TableSpaceFileAmEntry *) hash_search(TableSpaceFileHandlerHash,
 													   (void *) &spcId,
 													   HASH_FIND,
 													   &found);
 
 	if (found)
-		return spcAmEntry->spcAm;
+		return fileAmEntry->fileAm;
 
 	tuple = SearchSysCache1(TABLESPACEOID, ObjectIdGetDatum(spcId));
 	if (!HeapTupleIsValid(tuple))
@@ -121,53 +110,46 @@ GetTablespaceFileHandler(Oid spcId)
 	tblspcForm = (Form_pg_tablespace) GETSTRUCT(tuple);
 	datum = SysCacheGetAttr(TABLESPACEOID,
 							tuple,
-							Anum_pg_tablespace_spcfilehandler,
+							Anum_pg_tablespace_spcfilehandlerbin,
 							&isNull);
 	if (!isNull)
 	{
-		fileHandler = TextDatumGetCString(datum);
+		filehandlerbin = TextDatumGetCString(datum);
 
-		if (!SplitIdentifierString(fileHandler, ',', &fileHandler_list))
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("invalid list syntax for \"spcfilehandler\" option")));
+		datum = SysCacheGetAttr(TABLESPACEOID,
+						  		tuple,
+						  		Anum_pg_tablespace_spcfilehandlersrc,
+						  		&isNull);
+		filehandlersrc = TextDatumGetCString(datum);
 
-		if (list_length(fileHandler_list) != 2)
-			ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("invalid syntax for \"handler\" option")));
-
-		probin = (char *) linitial(fileHandler_list);
-		prosrc = (char *) lsecond(fileHandler_list);
-
-		file_handler = (File_handler) load_external_function(probin, prosrc, true, &libraryhandle);
+		file_handler = (File_handler) load_external_function(filehandlerbin, filehandlersrc, true, &libraryhandle);
 
 		if (file_handler)
-			spcAm = (*file_handler) ();
+			fileAm = (*file_handler) ();
 
-		if (spcAm == NULL || spcAm == &localFileAm)
+		if (fileAm == NULL || fileAm == &localFileAm)
 			elog(ERROR, "tablespace file handler did not return a FileAm struct");
 	}
 	else
 	{
-		spcAm = &localFileAm;
+		fileAm = &localFileAm;
 	}
 
 	ReleaseSysCache(tuple);
 
-	Assert(spcAm != NULL);
-	Assert(spcAm->open != NULL);
-	Assert(spcAm->close != NULL);
-	Assert(spcAm->read != NULL);
-	Assert(spcAm->write != NULL);
-	Assert(spcAm->size != NULL);
-	Assert(spcAm->unlink != NULL);
-	Assert(spcAm->formatFileName != NULL);
-	Assert(spcAm->exists != NULL);
-	Assert(spcAm->name != NULL);
-	Assert(spcAm->getLastError != NULL);
+	Assert(fileAm != NULL);
+	Assert(fileAm->open != NULL);
+	Assert(fileAm->close != NULL);
+	Assert(fileAm->read != NULL);
+	Assert(fileAm->write != NULL);
+	Assert(fileAm->size != NULL);
+	Assert(fileAm->unlink != NULL);
+	Assert(fileAm->formatFileName != NULL);
+	Assert(fileAm->exists != NULL);
+	Assert(fileAm->name != NULL);
+	Assert(fileAm->getLastError != NULL);
 
-	spcAmEntry = (TableSpaceFileAmEntry *) hash_search(TableSpaceFileHandlerHash,
+	fileAmEntry = (TableSpaceFileAmEntry *) hash_search(TableSpaceFileHandlerHash,
 													   (void *) &spcId,
 													   HASH_ENTER,
 													   &found);
@@ -176,9 +158,9 @@ GetTablespaceFileHandler(Oid spcId)
 				(errcode(ERRCODE_DUPLICATE_OBJECT),
 				 errmsg("extra tablespace oid \"%u\" already exists", spcId)));
 
-	spcAmEntry->spcAm = spcAm;
+	fileAmEntry->fileAm = fileAm;
 
-	return spcAm;
+	return fileAm;
 }
 
 /*
@@ -230,35 +212,87 @@ RelationIsDirectoryTable(Oid relId)
 }
 
 List *
-GetDirectoryTableBuiltinColumns(void)
+GetDirectoryTableSchema(void)
 {
-	int i;
 	List *result = NIL;
 
-	for (i = 0; i < lengthof(dirTableColumns); i++)
-	{
-		ColumnDef *columnDef = makeNode(ColumnDef);
+	ColumnDef *columnDef = makeNode(ColumnDef);
+	columnDef->colname = "relative_path";
+	columnDef->typeName = SystemTypeName("text");
+	columnDef->is_local = true;
 
-		columnDef->colname = pstrdup(dirTableColumns[i].colName);
-		columnDef->typeName = SystemTypeName(pstrdup(dirTableColumns[i].typName));
-		columnDef->is_local = true;
+	Constraint *constraint = makeNode(Constraint);
+	constraint->contype = CONSTR_PRIMARY;
+	constraint->location = -1;
+	constraint->keys = NIL;
+	constraint->options = NIL;
+	constraint->indexname = NULL;
+	constraint->indexspace = NULL;
+	columnDef->constraints = list_make1(constraint);
+	result = lappend(result, columnDef);
 
-		if (i == 0)
-		{
-			Constraint *constraint = makeNode(Constraint);
-			constraint->contype = CONSTR_PRIMARY;
-			constraint->location = -1;
-			constraint->keys = NIL;
-			constraint->options = NIL;
-			constraint->indexname = NULL;
-			constraint->indexspace = NULL;
-			columnDef->constraints = list_make1(constraint);
-		}
+	columnDef = makeNode(ColumnDef);
+	columnDef->colname = "size";
+	columnDef->typeName = SystemTypeName("int8");
+	columnDef->is_local = true;
+	result = lappend(result, columnDef);
 
-		result = lappend(result, columnDef);
-	}
+	columnDef = makeNode(ColumnDef);
+	columnDef->colname = "last_modified";
+	columnDef->typeName = SystemTypeName("timestamptz");
+	columnDef->is_local =true;
+	result = lappend(result, columnDef);
+
+	columnDef = makeNode(ColumnDef);
+	columnDef->colname = "md5";
+	columnDef->typeName = SystemTypeName("text");
+	columnDef->is_local = true;
+	result = lappend(result, columnDef);
+
+	columnDef = makeNode(ColumnDef);
+	columnDef->colname = "tag";
+	columnDef->typeName = SystemTypeName("text");
+	columnDef->is_local = true;
+	result = lappend(result, columnDef);
 
 	return result;
+}
+
+DistributedBy *
+GetDirectoryTableDistributedBy(void)
+{
+	Oid			opclassoid = InvalidOid;
+	HeapTuple	ht_opc;
+	Form_pg_opclass opcrec;
+	char	   *opcname;
+	char	   *nspname;
+
+	DistributedBy *distributedBy = makeNode(DistributedBy);
+	distributedBy->ptype = POLICYTYPE_PARTITIONED;
+	distributedBy->numsegments = -1;
+	DistributionKeyElem *elem = makeNode(DistributionKeyElem);
+	elem->name = "relative_path";
+	if (gp_use_legacy_hashops)
+		opclassoid = get_legacy_cdbhash_opclass_for_base_type(TEXTOID);
+
+	if (!OidIsValid(opclassoid))
+		opclassoid = cdb_default_distribution_opclass_for_type(TEXTOID);
+
+	ht_opc = SearchSysCache1(CLAOID, ObjectIdGetDatum(opclassoid));
+	if (!HeapTupleIsValid(ht_opc))
+		elog(ERROR, "cache lookup failed for opclass %u", opclassoid);
+	opcrec = (Form_pg_opclass) GETSTRUCT(ht_opc);
+	nspname = get_namespace_name(opcrec->opcnamespace);
+	opcname = pstrdup(NameStr(opcrec->opcname));
+	elem->opclass = list_make2(makeString(nspname), makeString(opcname));
+
+	elem->location = -1;
+	distributedBy->keyCols = lappend(distributedBy->keyCols, elem);
+	distributedBy->numsegments = GP_POLICY_DEFAULT_NUMSEGMENTS();
+
+	ReleaseSysCache(ht_opc);
+
+	return distributedBy;
 }
 
 void

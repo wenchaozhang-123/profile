@@ -1484,6 +1484,7 @@ _outCreateTableSpaceStmt(StringInfo str, const CreateTableSpaceStmt *node)
 	WRITE_NODE_FIELD(owner);
 	WRITE_STRING_FIELD(location);
 	WRITE_NODE_FIELD(options);
+	WRITE_STRING_FIELD(filehandler);
 }
 
 static void

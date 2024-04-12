@@ -44,22 +44,22 @@ typedef struct UFileNodePendingDelete
 	char *relativePath;
 } UFileNodePendingDelete;
 
-typedef struct PendingRelDeleteFile
+typedef struct PendingRelDeleteUFile
 {
 	UFileNodePendingDelete filenode;		/* relation that may need to be deleted */
 	bool		atCommit;		/* T=delete at commit; F=delete at abort */
 	int			nestLevel;		/* xact nesting level of request */
-	struct PendingRelDeleteFile *next;		/* linked-list link */
-} PendingRelDeleteFile;
+	struct PendingRelDeleteUFile *next;		/* linked-list link */
+} PendingRelDeleteUFile;
 
-static PendingRelDeleteFile *pendingDeleteFiles = NULL; /* head of linked list */
+static PendingRelDeleteUFile *pendingDeleteUFiles = NULL; /* head of linked list */
 
 void
 DirectoryTableDropStorage(Relation rel)
 {
 	char *filePath;
 	DirectoryTable *dirTable;
-	PendingRelDeleteFile *pending;
+	PendingRelDeleteUFile *pending;
 	TableScanDesc scandesc;
 	Relation	spcrel;
 	HeapTuple	tuple;
@@ -111,69 +111,69 @@ DirectoryTableDropStorage(Relation rel)
 	filePath = psprintf("%s", dirTable->location);
 
 	/* Add the relation to the list of stuff to delete at commit */
-	pending = (PendingRelDeleteFile *)
-		MemoryContextAlloc(TopMemoryContext, sizeof(PendingRelDeleteFile));
+	pending = (PendingRelDeleteUFile *)
+		MemoryContextAlloc(TopMemoryContext, sizeof(PendingRelDeleteUFile));
 	pending->filenode.relkind = rel->rd_rel->relkind;
 	pending->filenode.relativePath = MemoryContextStrdup(TopMemoryContext, filePath);
 	pending->filenode.spcId = dirTable->spcId;
 
 	pending->atCommit = true;	/* delete if commit */
 	pending->nestLevel = GetCurrentTransactionNestLevel();
-	pending->next = pendingDeleteFiles;
+	pending->next = pendingDeleteUFiles;
 
-	pendingDeleteFiles = pending;
+	pendingDeleteUFiles = pending;
 
 	pfree(filePath);
 }
 
 void
-FileAddCreatePendingEntry(Relation rel, Oid spcId, char *relativePath)
+UFileAddCreatePendingEntry(Relation rel, Oid spcId, char *relativePath)
 {
-	PendingRelDeleteFile *pending;
+	PendingRelDeleteUFile *pending;
 
 	/* Add the relation to the list of stuff to delete at abort */
-	pending = (PendingRelDeleteFile *)
-		MemoryContextAlloc(TopMemoryContext, sizeof(PendingRelDeleteFile));
+	pending = (PendingRelDeleteUFile *)
+		MemoryContextAlloc(TopMemoryContext, sizeof(PendingRelDeleteUFile));
 	pending->filenode.relkind = rel->rd_rel->relkind;
 	pending->filenode.relativePath = MemoryContextStrdup(TopMemoryContext, relativePath);
 	pending->filenode.spcId = spcId;
 
 	pending->atCommit = false;	/* delete if abort */
 	pending->nestLevel = GetCurrentTransactionNestLevel();
-	pending->next = pendingDeleteFiles;
+	pending->next = pendingDeleteUFiles;
 
-	pendingDeleteFiles = pending;
+	pendingDeleteUFiles = pending;
 }
 
 void
-FileAddDeletePendingEntry(Relation rel, Oid spcId, char *relativePath)
+UFileAddDeletePendingEntry(Relation rel, Oid spcId, char *relativePath)
 {
-	PendingRelDeleteFile *pending;
+	PendingRelDeleteUFile *pending;
 
 	/* Add the relation to the list of stuff to delete at abort */
-	pending = (PendingRelDeleteFile *)
-		MemoryContextAlloc(TopMemoryContext, sizeof(PendingRelDeleteFile));
+	pending = (PendingRelDeleteUFile *)
+		MemoryContextAlloc(TopMemoryContext, sizeof(PendingRelDeleteUFile));
 	pending->filenode.relkind = rel->rd_rel->relkind;
 	pending->filenode.relativePath = MemoryContextStrdup(TopMemoryContext, relativePath);
 	pending->filenode.spcId = spcId;
 
 	pending->atCommit = true;	/* delete if commit */
 	pending->nestLevel = GetCurrentTransactionNestLevel();
-	pending->next = pendingDeleteFiles;
+	pending->next = pendingDeleteUFiles;
 
-	pendingDeleteFiles = pending;
+	pendingDeleteUFiles = pending;
 }
 
 void
-FileDoDeletesActions(bool isCommit)
+UFileDoDeletesActions(bool isCommit)
 {
 	int nestLevel = GetCurrentTransactionNestLevel();
-	PendingRelDeleteFile *pending;
-	PendingRelDeleteFile *prev;
-	PendingRelDeleteFile *next;
+	PendingRelDeleteUFile *pending;
+	PendingRelDeleteUFile *prev;
+	PendingRelDeleteUFile *next;
 
 	prev = NULL;
-	for (pending = pendingDeleteFiles; pending != NULL; pending = next)
+	for (pending = pendingDeleteUFiles; pending != NULL; pending = next)
 	{
 		next = pending->next;
 		if (pending->nestLevel < nestLevel)
@@ -187,7 +187,7 @@ FileDoDeletesActions(bool isCommit)
 			if (prev)
 				prev->next = next;
 			else
-				pendingDeleteFiles = next;
+				pendingDeleteUFiles = next;
 
 			/* do deletion if called for */
 			if (pending->atCommit == isCommit)
@@ -204,12 +204,12 @@ FileDoDeletesActions(bool isCommit)
 }
 
 void
-FileAtSubCommitSmgr(void)
+UFileAtSubCommitSmgr(void)
 {
 	int	nestLevel = GetCurrentTransactionNestLevel();
-	PendingRelDeleteFile *pending;
+	PendingRelDeleteUFile *pending;
 
-	for (pending = pendingDeleteFiles; pending != NULL; pending = pending->next)
+	for (pending = pendingDeleteUFiles; pending != NULL; pending = pending->next)
 	{
 		if (pending->nestLevel >= nestLevel)
 			pending->nestLevel = nestLevel - 1;
@@ -217,7 +217,7 @@ FileAtSubCommitSmgr(void)
 }
 
 void
-FileAtSubAbortSmgr(void)
+UFileAtSubAbortSmgr(void)
 {
-	FileDoDeletesActions(false);
+	UFileDoDeletesActions(false);
 }

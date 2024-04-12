@@ -3069,15 +3069,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 		/*
 		 * Verify result relation is a valid target for the current operation
 		 */
-		CheckValidResultRel(resultRelInfo, operation);
-
-		/*
-		 * Verify directory table is a valid target for the current operation
-		 */
-		if (resultRelInfo->ri_RelationDesc->rd_rel->relkind == RELKIND_DIRECTORY_TABLE)
-		{
-			CheckValidResultRelDirectoryTable(resultRelInfo, operation, mtstate);
-		}
+		CheckValidResultRel(resultRelInfo, operation, mtstate);
 
 		if (RelationIsAoRows(resultRelInfo->ri_RelationDesc))
 			appendonly_dml_init(resultRelInfo->ri_RelationDesc, operation);

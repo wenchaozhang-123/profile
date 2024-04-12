@@ -29,8 +29,6 @@
 #include "utils/elog.h"
 #include "utils/wait_event.h"
 
-#define UFILE_ERROR_SIZE	1024
-
 typedef struct LocalFile
 {
 	FileAm * methods;
@@ -38,7 +36,7 @@ typedef struct LocalFile
 	off_t offset;
 } LocalFile;
 
-static UFile *localFileOpen(const char *fileName, int fileFlags,
+static UFile *localFileOpen(Oid spcId, const char *fileName, int fileFlags,
 							char *errorMessage, int errorMessageSize);
 static void localFileClose(UFile *file);
 static int	localFileRead(UFile *file, char *buffer, int amount);
@@ -65,10 +63,9 @@ struct FileAm localFileAm = {
 	.getLastError = localGetLastError,
 };
 
-struct FileAm *currentFileAm = &localFileAm;
-
 static UFile *
-localFileOpen(const char *fileName,
+localFileOpen(Oid spcId,
+			  const char *fileName,
 			  int fileFlags,
 			  char *errorMessage,
 			  int errorMessageSize)
@@ -327,7 +324,7 @@ UFileOpen(Oid spcId,
 	FileAm *fileAm;
 
 	fileAm = GetTablespaceFileHandler(spcId);
-	ufile = fileAm->open(fileName, fileFlags, errorMessage, errorMessageSize);
+	ufile = fileAm->open(spcId, fileName, fileFlags, errorMessage, errorMessageSize);
 
 	return ufile;
 }

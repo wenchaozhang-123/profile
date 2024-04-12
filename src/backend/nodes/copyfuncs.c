@@ -4871,6 +4871,7 @@ _copyCreateTableSpaceStmt(const CreateTableSpaceStmt *from)
 	COPY_NODE_FIELD(owner);
 	COPY_STRING_FIELD(location);
 	COPY_NODE_FIELD(options);
+	COPY_STRING_FIELD(filehandler);
 
 	return newnode;
 }

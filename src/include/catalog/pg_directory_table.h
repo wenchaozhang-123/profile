@@ -62,7 +62,8 @@ typedef struct DirectoryTable
 
 extern DirectoryTable *GetDirectoryTable(Oid relId);
 extern bool RelationIsDirectoryTable(Oid relId);
-extern List *GetDirectoryTableBuiltinColumns(void);
+extern List *GetDirectoryTableSchema(void);
+extern DistributedBy *GetDirectoryTableDistributedBy(void);
 extern void RemoveDirectoryTableEntry(Oid relId);
 extern FileAm *GetTablespaceFileHandler(Oid spcId);
 

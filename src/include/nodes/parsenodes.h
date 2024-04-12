@@ -2716,6 +2716,7 @@ typedef struct CreateTableSpaceStmt
 	RoleSpec   *owner;
 	char	   *location;
 	List	   *options;
+	char	   *filehandler;
 } CreateTableSpaceStmt;
 
 typedef struct DropTableSpaceStmt

@@ -1131,6 +1131,7 @@ _readCreateTableSpaceStmt(void)
 	READ_NODE_FIELD(owner);
 	READ_STRING_FIELD(location);
 	READ_NODE_FIELD(options);
+	READ_STRING_FIELD(filehandler);
 
 	READ_DONE();
 }

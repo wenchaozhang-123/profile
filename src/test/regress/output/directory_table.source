@@ -788,59 +788,59 @@ ERROR:  conflicting or redundant options
 LINE 1: ...OPY BINARY dir_table1 FROM STDIN 'nation_failed' (format CSV...
                                                              ^
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (freeze off);
-ERROR:  freeze option is not allowed in copy binary from directory table.
+ERROR:  option "freeze" not recognized
 LINE 1: ...OPY BINARY dir_table1 FROM STDIN 'nation_failed' (freeze off...
                                                              ^
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (freeze on);
-ERROR:  freeze option is not allowed in copy binary from directory table.
+ERROR:  option "freeze" not recognized
 LINE 1: ...OPY BINARY dir_table1 FROM STDIN 'nation_failed' (freeze on)...
                                                              ^
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (delimiter ',');
-ERROR:  delimiter option is not allowed in copy binary from directory table.
+ERROR:  option "delimiter" not recognized
 LINE 1: ...OPY BINARY dir_table1 FROM STDIN 'nation_failed' (delimiter ...
                                                              ^
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (null ' ');
-ERROR:  null option is not allowed in copy binary from directory table.
+ERROR:  option "null" not recognized
 LINE 1: ...OPY BINARY dir_table1 FROM STDIN 'nation_failed' (null ' ');
                                                              ^
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (header off);
-ERROR:  header option is not allowed in copy binary from directory table.
+ERROR:  option "header" not recognized
 LINE 1: ...OPY BINARY dir_table1 FROM STDIN 'nation_failed' (header off...
                                                              ^
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (header on);
-ERROR:  header option is not allowed in copy binary from directory table.
+ERROR:  option "header" not recognized
 LINE 1: ...OPY BINARY dir_table1 FROM STDIN 'nation_failed' (header on)...
                                                              ^
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (quote ':');
-ERROR:  quote option is not allowed in copy binary from directory table.
+ERROR:  option "quote" not recognized
 LINE 1: ...OPY BINARY dir_table1 FROM STDIN 'nation_failed' (quote ':')...
                                                              ^
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (escape ':');
-ERROR:  escape option is not allowed in copy binary from directory table.
+ERROR:  option "escape" not recognized
 LINE 1: ...OPY BINARY dir_table1 FROM STDIN 'nation_failed' (escape ':'...
                                                              ^
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (force_quote (a));
-ERROR:  force_quote option is not allowed in copy binary from directory table.
+ERROR:  option "force_quote" not recognized
 LINE 1: ...OPY BINARY dir_table1 FROM STDIN 'nation_failed' (force_quot...
                                                              ^
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (force_quote *);
-ERROR:  force_quote option is not allowed in copy binary from directory table.
+ERROR:  option "force_quote" not recognized
 LINE 1: ...OPY BINARY dir_table1 FROM STDIN 'nation_failed' (force_quot...
                                                              ^
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (force_not_null (a));
-ERROR:  force_not_null option is not allowed in copy binary from directory table.
+ERROR:  option "force_not_null" not recognized
 LINE 1: ...OPY BINARY dir_table1 FROM STDIN 'nation_failed' (force_not_...
                                                              ^
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (force_null (a));
-ERROR:  force_null option is not allowed in copy binary from directory table.
+ERROR:  option "force_null" not recognized
 LINE 1: ...OPY BINARY dir_table1 FROM STDIN 'nation_failed' (force_null...
                                                              ^
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (convert_selectively (a));
-ERROR:  convert_selectively option is not allowed in copy binary from directory table.
+ERROR:  option "convert_selectively" not recognized
 LINE 1: ...OPY BINARY dir_table1 FROM STDIN 'nation_failed' (convert_se...
                                                              ^
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (encoding 'sql_ascii');
-ERROR:  encoding option is not allowed in copy binary from directory table.
+ERROR:  option "encoding" not recognized
 LINE 1: ...OPY BINARY dir_table1 FROM STDIN 'nation_failed' (encoding '...
                                                              ^
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (format CSV);
@@ -848,59 +848,59 @@ ERROR:  conflicting or redundant options
 LINE 1: ...rc/test/regress/data/nation.csv' 'nation_failed' (format CSV...
                                                              ^
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (freeze off);
-ERROR:  freeze option is not allowed in copy binary from directory table.
+ERROR:  option "freeze" not recognized
 LINE 1: ...rc/test/regress/data/nation.csv' 'nation_failed' (freeze off...
                                                              ^
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (freeze on);
-ERROR:  freeze option is not allowed in copy binary from directory table.
+ERROR:  option "freeze" not recognized
 LINE 1: ...rc/test/regress/data/nation.csv' 'nation_failed' (freeze on)...
                                                              ^
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (delimiter ',');
-ERROR:  delimiter option is not allowed in copy binary from directory table.
+ERROR:  option "delimiter" not recognized
 LINE 1: ...rc/test/regress/data/nation.csv' 'nation_failed' (delimiter ...
                                                              ^
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (null ' ');
-ERROR:  null option is not allowed in copy binary from directory table.
+ERROR:  option "null" not recognized
 LINE 1: ...rc/test/regress/data/nation.csv' 'nation_failed' (null ' ');
                                                              ^
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (header off);
-ERROR:  header option is not allowed in copy binary from directory table.
+ERROR:  option "header" not recognized
 LINE 1: ...rc/test/regress/data/nation.csv' 'nation_failed' (header off...
                                                              ^
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (header on);
-ERROR:  header option is not allowed in copy binary from directory table.
+ERROR:  option "header" not recognized
 LINE 1: ...rc/test/regress/data/nation.csv' 'nation_failed' (header on)...
                                                              ^
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (quote ':');
-ERROR:  quote option is not allowed in copy binary from directory table.
+ERROR:  option "quote" not recognized
 LINE 1: ...rc/test/regress/data/nation.csv' 'nation_failed' (quote ':')...
                                                              ^
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (escape ':');
-ERROR:  escape option is not allowed in copy binary from directory table.
+ERROR:  option "escape" not recognized
 LINE 1: ...rc/test/regress/data/nation.csv' 'nation_failed' (escape ':'...
                                                              ^
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (force_quote (a));
-ERROR:  force_quote option is not allowed in copy binary from directory table.
+ERROR:  option "force_quote" not recognized
 LINE 1: ...rc/test/regress/data/nation.csv' 'nation_failed' (force_quot...
                                                              ^
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (force_quote *);
-ERROR:  force_quote option is not allowed in copy binary from directory table.
+ERROR:  option "force_quote" not recognized
 LINE 1: ...rc/test/regress/data/nation.csv' 'nation_failed' (force_quot...
                                                              ^
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (force_not_null (a));
-ERROR:  force_not_null option is not allowed in copy binary from directory table.
+ERROR:  option "force_not_null" not recognized
 LINE 1: ...rc/test/regress/data/nation.csv' 'nation_failed' (force_not_...
                                                              ^
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (force_null (a));
-ERROR:  force_null option is not allowed in copy binary from directory table.
+ERROR:  option "force_null" not recognized
 LINE 1: ...rc/test/regress/data/nation.csv' 'nation_failed' (force_null...
                                                              ^
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (convert_selectively (a));
-ERROR:  convert_selectively option is not allowed in copy binary from directory table.
+ERROR:  option "convert_selectively" not recognized
 LINE 1: ...rc/test/regress/data/nation.csv' 'nation_failed' (convert_se...
                                                              ^
 COPY BINARY dir_table2 FROM '@abs_srcdir@/data/nation.csv' 'nation_failed' (encoding 'sql_ascii');
-ERROR:  encoding option is not allowed in copy binary from directory table.
+ERROR:  option "encoding" not recognized
 LINE 1: ...rc/test/regress/data/nation.csv' 'nation_failed' (encoding '...
                                                              ^
 -- Test copy file content md5

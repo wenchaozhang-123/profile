@@ -682,21 +682,6 @@ CopyMultiInsertInfoStore(CopyMultiInsertInfo *miinfo, ResultRelInfo *rri,
 	miinfo->bufferedBytes += tuplen;
 }
 
-static void
-bytesToHex(uint8 b[16], char *s)
-{
-	static const char *hex = "0123456789abcdef";
-	int			q,
-		w;
-
-	for (q = 0, w = 0; q < 16; q++)
-	{
-		s[w++] = hex[(b[q] >> 4) & 0x0F];
-		s[w++] = hex[b[q] & 0x0F];
-	}
-	s[w] = '\0';
-}
-
 static CopyStmt *
 convertToCopyTextStmt(CopyStmt *stmt)
 {
@@ -1150,7 +1135,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 						 	 errmsg("failed to open file \"%s\": %s", orgiFileName, errorMessage)));
 
 			/* Delete uploaded file when the transaction fails */
-			FileAddCreatePendingEntry(cstate->rel, dirTable->spcId, orgiFileName);
+			UFileAddCreatePendingEntry(cstate->rel, dirTable->spcId, orgiFileName);
 
 			file_buf = TextDatumGetCString(myslot->tts_values[5]);
 			decode_file_len = strlen(file_buf);
@@ -1595,7 +1580,7 @@ CopyFrom(CopyFromState cstate)
 
 	/* Verify the named relation is a valid target for INSERT */
 	if (!(cstate->rel->rd_rel->relkind == RELKIND_DIRECTORY_TABLE))
-		CheckValidResultRel(resultRelInfo, CMD_INSERT);
+		CheckValidResultRel(resultRelInfo, CMD_INSERT, NULL);
 
 	ExecOpenIndices(resultRelInfo, false);
 
