@@ -116,6 +116,59 @@ GetStorageServerByName(const char *srvname, bool missing_ok)
 }
 
 /*
+ * GetStorgeUserMapping	- look up the storage user mapping.
+ *
+ * If no mapping is found for the supplied user, we also look for
+ * PUBLIC mappings (userid == InvalidOid).
+ */
+StorageUserMapping *
+GetStorageUserMapping(Oid userid, Oid serverid)
+{
+	Datum		datum;
+	HeapTuple	tp;
+	bool		isnull;
+	StorageUserMapping *um;
+
+	tp = SearchSysCache2(STORAGEUSERMAPPINGUSERSERVER,
+						 ObjectIdGetDatum(userid),
+						 ObjectIdGetDatum(serverid));
+
+	if (!HeapTupleIsValid(tp))
+	{
+		/* Not found for the specific user -- try PUBLIC */
+		tp = SearchSysCache2(STORAGEUSERMAPPINGUSERSERVER,
+							 ObjectIdGetDatum(InvalidOid),
+							 ObjectIdGetDatum(serverid));
+	}
+
+	if (!HeapTupleIsValid(tp))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("storage user mapping not found for \"%s\"",
+					    StorageMappingUserName(userid))));
+
+	um = (StorageUserMapping *) palloc(sizeof(StorageUserMapping));
+	um->umid = ((Form_gp_storage_user_mapping) GETSTRUCT(tp))->oid;
+	um->userid = userid;
+	um->serverid = serverid;
+
+	/* Extract the umoptions */
+	datum = SysCacheGetAttr(STORAGEUSERMAPPINGUSERSERVER,
+							tp,
+							Anum_gp_storage_user_mapping_umoptions,
+							&isnull);
+	if (isnull)
+		um->options = NIL;
+	else
+		um->options = untransformRelOptions(datum);
+
+	ReleaseSysCache(tp);
+
+	return um;
+}
+
+
+/*
  * Convert a DefElem list to the text array format that is used in
  * gp_storage_server, gp_storage_user_mapping.
  *

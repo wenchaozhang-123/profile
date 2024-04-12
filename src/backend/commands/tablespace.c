@@ -270,7 +270,7 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 	Oid			ownerId;
 	Datum		newOptions;
 	List       *nonContentOptions = NIL;
-	char	*fileHandler = NULL;
+	char       *fileHandler = NULL;
 
 	/* Must be super user */
 	if (!superuser())

@@ -2131,15 +2131,11 @@ CheckValidResultRelDirectoryTable(ResultRelInfo *resultRelInfo, CmdType operatio
 	ListCell	*lc;
 
 	/*
-	 * Usually, mt_lastResultIndex matches the target rel. If it happens not
-	 * to, we can get the index the hard way with an integer division.
+	 * Usually, mt_lastResultIndex matches the target rel. As directory table
+	 * not support partitioned table, here mt_lastResultIndex must be the target
+	 * table index.
 	 */
 	whichrel = mtstate->mt_lastResultIndex;
-	if (resultRelInfo != mtstate->resultRelInfo + whichrel)
-	{
-		whichrel = resultRelInfo - mtstate->resultRelInfo;
-		Assert(whichrel >= 0 && whichrel < mtstate->mt_nrels);
-	}
 
 	updateColnos = (List *) list_nth(node->updateColnosLists, whichrel);
 

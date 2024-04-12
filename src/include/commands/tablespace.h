@@ -44,8 +44,8 @@ typedef struct TableSpaceOpts
 	int			effective_io_concurrency;
 	int			maintenance_io_concurrency;
 	bool 		stage;
-	char		*server;
-	char 		*path;
+	char		server[MAXPGPATH];
+	char 		path[MAXPGPATH];
 } TableSpaceOpts;
 
 extern Oid	CreateTableSpace(CreateTableSpaceStmt *stmt);

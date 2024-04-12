@@ -17,5 +17,9 @@ void		get_tablespace_page_costs(Oid spcid, float8 *spc_random_page_cost,
 									  float8 *spc_seq_page_cost);
 int			get_tablespace_io_concurrency(Oid spcid);
 int			get_tablespace_maintenance_io_concurrency(Oid spcid);
+const char *GetDfsTableSpaceServer(Oid id);
+const char *GetDfsTableSpacePath(Oid id);
+bool IsDfsTableSpaceById(Oid id);
+bool IsDfsTableSpaceByName(const char *name);
 
 #endif							/* SPCCACHE_H */
