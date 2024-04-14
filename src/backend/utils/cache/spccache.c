@@ -243,8 +243,42 @@ GetDfsTablespaceServer(Oid id)
 	if (!spc->opts)
 		return NULL;
 
-	if (spc->opts->server == NULL)
+	if (spc->opts->server == NULL && spc->opts->server[0] != '\0')
 		return NULL;
 
-	return pstrdup(spc->opts)
+	return pstrdup(spc->opts->server);
+}
+
+const char *
+GetDfsTablespacePath(Oid id)
+{
+	TableSpaceCacheEntry *spc = get_tablespace(id);
+
+	if (!spc->opts)
+		return NULL;
+
+	if (spc->opts->path != NULL && spc->opts->path[0] != '\0')
+		return NULL;
+
+	return pstrdup(spc->opts->path);
+}
+
+bool
+IsDfsTablespaceById(Oid id)
+{
+	char *serverName = (char *) GetDfsTablespaceServer(id);
+
+	if (serverName != NULL)
+	{
+		pfree(serverName);
+		return true;
+	}
+
+	return false;
+}
+
+bool
+IsDfsTablespaceByName(const char *name)
+{
+	return IsDfsTablespaceById(get_tablespace_oid(name, false));
 }
