@@ -2901,6 +2901,7 @@ _outCreateStmtInfo(StringInfo str, const CreateStmt *node)
 
 	WRITE_NODE_FIELD(part_idx_oids);
 	WRITE_NODE_FIELD(part_idx_names);
+	WRITE_BOOL_FIELD(is_directory_table);
 
 	/*
 	 * Some extra checks to make sure we didn't get lost

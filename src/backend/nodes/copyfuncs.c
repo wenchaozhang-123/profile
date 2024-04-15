@@ -4130,6 +4130,7 @@ CopyCreateStmtFields(const CreateStmt *from, CreateStmt *newnode)
 
 	COPY_NODE_FIELD(part_idx_oids);
 	COPY_NODE_FIELD(part_idx_names);
+	COPY_SCALAR_FIELD(is_directory_table);
 }
 
 static CreateStmt *

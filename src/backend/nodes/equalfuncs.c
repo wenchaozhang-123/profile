@@ -1389,6 +1389,7 @@ _equalCreateStmt(const CreateStmt *a, const CreateStmt *b)
 	COMPARE_SCALAR_FIELD(buildAoBlkdir);
 	COMPARE_NODE_FIELD(attr_encodings);
 	COMPARE_SCALAR_FIELD(isCtas);
+	COMPARE_SCALAR_FIELD(is_directory_table);
 
 	return true;
 }

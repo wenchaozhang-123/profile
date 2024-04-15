@@ -4781,6 +4781,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->if_not_exists = false;
 					n->distributedBy = (DistributedBy *) $14;
 					n->relKind = RELKIND_RELATION;
+					n->is_directory_table = false;
 
 					n->accessMethod = greenplumLegacyAOoptions(n->accessMethod, &n->options);
 
@@ -4811,6 +4812,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->if_not_exists = true;
 					n->distributedBy = (DistributedBy *) $17;
 					n->relKind = RELKIND_RELATION;
+					n->is_directory_table = false;
 
 					n->accessMethod = greenplumLegacyAOoptions(n->accessMethod, &n->options);
 
@@ -4842,6 +4844,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->if_not_exists = false;
 					n->distributedBy = (DistributedBy *) $13;
 					n->relKind = RELKIND_RELATION;
+					n->is_directory_table = false;
 
 					n->accessMethod = greenplumLegacyAOoptions(n->accessMethod, &n->options);
 
@@ -4873,6 +4876,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->if_not_exists = true;
 					n->distributedBy = (DistributedBy *) $16;
 					n->relKind = RELKIND_RELATION;
+					n->is_directory_table = false;
 
 					n->accessMethod = greenplumLegacyAOoptions(n->accessMethod, &n->options);
 
@@ -4904,6 +4908,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->if_not_exists = false;
 					n->distributedBy = NULL;
 					n->relKind = RELKIND_RELATION;
+					n->is_directory_table = false;
 
 					n->accessMethod = greenplumLegacyAOoptions(n->accessMethod, &n->options);
 
@@ -4935,6 +4940,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->if_not_exists = true;
 					n->distributedBy = NULL;
 					n->relKind = RELKIND_RELATION;
+					n->is_directory_table = false;
 
 					n->accessMethod = greenplumLegacyAOoptions(n->accessMethod, &n->options);
 
@@ -8161,62 +8167,60 @@ CreateDirectoryTableStmt:
             CREATE DIRECTORY TABLE qualified_name
             table_access_method_clause OptTableSpace OptDistributedBy
                 {
-                    CreateDirectoryTableStmt *n = makeNode(CreateDirectoryTableStmt);
+                    CreateStmt *n = makeNode(CreateStmt);
                     $4->relpersistence = RELPERSISTENCE_PERMANENT;
-                    n->base.relation = $4;
-                    n->base.tableElts = GetDirectoryTableBuiltinColumns();
-                    n->base.inhRelations = NIL;
-                    n->base.ofTypename = NULL;
-                    n->base.constraints = NIL;
-                    n->base.options = NIL;
-                    n->base.oncommit = ONCOMMIT_NOOP;
-                    /* TODO: support tablespace for data table ? */
-                    n->base.tablespacename = $6;
-                    if (n->base.tablespacename == NULL)
+                    n->relation = $4;
+                    n->tableElts = GetDirectoryTableBuiltinColumns();
+                    n->inhRelations = NIL;
+                    n->ofTypename = NULL;
+                    n->constraints = NIL;
+                    n->options = NIL;
+                    n->oncommit = ONCOMMIT_NOOP;
+                    n->tablespacename = $6;
+                    if (n->tablespacename == NULL)
                         ereport(ERROR,
                     				(errcode(ERRCODE_SYNTAX_ERROR),
                     				 errmsg("Tablespace is disallowed to use NULL in create directory table."),
                                      parser_errposition(@6)));
-                    n->base.if_not_exists = false;
-                    n->base.distributedBy = (DistributedBy *) $7;
-                    if (n->base.distributedBy != NULL)
+                    n->if_not_exists = false;
+                    n->distributedBy = (DistributedBy *) $7;
+                    if (n->distributedBy != NULL)
                         ereport(ERROR,
                                     (errcode(ERRCODE_SYNTAX_ERROR),
                                      errmsg("Create directory table is not allowed to set distributed by."),
                                      parser_errposition(@7)));
-                    n->base.relKind = RELKIND_DIRECTORY_TABLE;
-                    n->tablespacename = $6;
+                    n->relKind = RELKIND_DIRECTORY_TABLE;
+                    n->is_directory_table = true;
 
                     $$ = (Node *) n;
                 }
             | CREATE DIRECTORY TABLE IF_P NOT EXISTS qualified_name
             table_access_method_clause OptTableSpace OptDistributedBy
                 {
-                    CreateDirectoryTableStmt *n = makeNode(CreateDirectoryTableStmt);
+                    CreateStmt *n = makeNode(CreateStmt);
                     $7->relpersistence = RELPERSISTENCE_PERMANENT;
-                    n->base.relation = $7;
-                    n->base.tableElts = GetDirectoryTableBuiltinColumns();
-                    n->base.inhRelations = NIL;
-                    n->base.ofTypename = NULL;
-                    n->base.constraints = NIL;
-                    n->base.options = NIL;
-                    n->base.oncommit = ONCOMMIT_NOOP;
-                    /* TODO: support tablespace for data table? */
-                    n->base.tablespacename = $9;
-                    if (n->base.tablespacename == NULL)
+                    n->relation = $7;
+                    n->tableElts = GetDirectoryTableBuiltinColumns();
+                    n->inhRelations = NIL;
+                    n->ofTypename = NULL;
+                    n->constraints = NIL;
+                    n->options = NIL;
+                    n->oncommit = ONCOMMIT_NOOP;
+                    n->tablespacename = $9;
+                    if (n->tablespacename == NULL)
                         ereport(ERROR,
                                     (errcode(ERRCODE_SYNTAX_ERROR),
                                      errmsg("Tablespace is disallowed to use NULL in create directory table."),
                                      parser_errposition(@9)));
-                    n->base.if_not_exists = true;
-                    n->base.distributedBy = (DistributedBy *) $10;
-                    if (n->base.distributedBy != NULL)
+                    n->if_not_exists = true;
+                    n->distributedBy = (DistributedBy *) $10;
+                    if (n->distributedBy != NULL)
                         ereport(ERROR,
                                     (errcode(ERRCODE_SYNTAX_ERROR),
                                      errmsg("Create directory table is not allowed to set distributed by."),
                                      parser_errposition(@10)));
-                    n->base.relKind = RELKIND_DIRECTORY_TABLE;
-                    n->tablespacename = $9;
+                    n->relKind = RELKIND_DIRECTORY_TABLE;
+                    n->is_directory_table = true;
 
                     $$ = (Node *) n;
                 }

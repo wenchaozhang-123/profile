@@ -2473,6 +2473,7 @@ typedef struct CreateStmt
 	/* names chosen for partition indexes */
 	List	   *part_idx_oids;
 	List	   *part_idx_names;
+	bool		is_directory_table;	/* whether for create directory table */
 } CreateStmt;
 
 /* ----------------------

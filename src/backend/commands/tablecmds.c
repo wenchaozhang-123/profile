@@ -636,17 +636,24 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 */
 	schema = NIL;
 	cooked_constraints = NIL;
-	foreach(listptr, stmt->tableElts)
+	if (stmt->is_directory_table)
 	{
-		Node	   *node = lfirst(listptr);
-
-		if (IsA(node, CookedConstraint))
+		foreach(listptr, stmt->tableElts)
 		{
-			Assert(Gp_role == GP_ROLE_EXECUTE);
-			cooked_constraints = lappend(cooked_constraints, node);
+			Node	   *node = lfirst(listptr);
+
+			if (IsA(node, CookedConstraint))
+			{
+				Assert(Gp_role == GP_ROLE_EXECUTE);
+				cooked_constraints = lappend(cooked_constraints, node);
+			}
+			else
+				schema = lappend(schema, node);
 		}
-		else
-			schema = lappend(schema, node);
+	}
+	else
+	{
+
 	}
 
 	/*
