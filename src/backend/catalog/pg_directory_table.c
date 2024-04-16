@@ -13,8 +13,10 @@
 #include "postgres.h"
 
 #include "access/htup_details.h"
-#include "access/table.h"
+#include "access/xact.h"
+#include "catalog/index.h"
 #include "catalog/indexing.h"
+#include "catalog/pg_collation.h"
 #include "catalog/pg_opclass.h"
 #include "cdb/cdbhash.h"
 #include "cdb/cdbutil.h"
@@ -23,6 +25,7 @@
 #include "catalog/pg_directory_table.h"
 #include "catalog/gp_distribution_policy.h"
 #include "catalog/pg_tablespace.h"
+#include "storage/lmgr.h"
 #include "utils/builtins.h"
 #include "utils/inval.h"
 #include "utils/lsyscache.h"
@@ -220,15 +223,6 @@ GetDirectoryTableSchema(void)
 	columnDef->colname = "relative_path";
 	columnDef->typeName = SystemTypeName("text");
 	columnDef->is_local = true;
-
-	Constraint *constraint = makeNode(Constraint);
-	constraint->contype = CONSTR_PRIMARY;
-	constraint->location = -1;
-	constraint->keys = NIL;
-	constraint->options = NIL;
-	constraint->indexname = NULL;
-	constraint->indexspace = NULL;
-	columnDef->constraints = list_make1(constraint);
 	result = lappend(result, columnDef);
 
 	columnDef = makeNode(ColumnDef);
@@ -293,6 +287,73 @@ GetDirectoryTableDistributedBy(void)
 	ReleaseSysCache(ht_opc);
 
 	return distributedBy;
+}
+
+Oid
+CreateDirectoryTableIndex(Relation rel)
+{
+	char		dirtable_idxname[NAMEDATALEN];
+	Oid 		dirtable_idxid;
+	Oid		    collationObjectId;
+	IndexInfo	*indexInfo;
+	List		*indexColNames;
+	Oid			classObjectId[1];
+	int16		coloptions[1];
+	HeapTuple	tuple;
+	Datum		collationDatum;
+	bool		isNull;
+
+	snprintf(dirtable_idxname, sizeof(dirtable_idxname),
+			 "%s_pkey", RelationGetRelationName(rel));
+
+	classObjectId[0] = TEXT_BTREE_OPS_OID;
+
+	coloptions[0] = 0;
+
+	indexInfo = makeNode(IndexInfo);
+	indexInfo->ii_NumIndexAttrs = 1;
+	indexInfo->ii_NumIndexKeyAttrs = 1;
+	indexInfo->ii_IndexAttrNumbers[0] = 1;
+	indexInfo->ii_Expressions = NIL;
+	indexInfo->ii_ExpressionsState = NIL;
+	indexInfo->ii_Predicate = NIL;
+	indexInfo->ii_PredicateState = NULL;
+	indexInfo->ii_Unique = true;
+	indexInfo->ii_Concurrent = false;
+	indexColNames = list_make1("relative_path");
+
+	tuple = SearchSysCache2(ATTNUM,
+							ObjectIdGetDatum(RelationGetRelid(rel)),
+							Int16GetDatum(1));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for directory_table %u",
+			 RelationGetRelid(rel));
+	collationDatum = SysCacheGetAttr(ATTNUM, tuple, Anum_pg_attribute_attcollation,
+								  	 &isNull);
+	collationObjectId = DatumGetObjectId(collationDatum);
+
+	dirtable_idxid = index_create(rel,
+								  dirtable_idxname,
+								  InvalidOid,
+								  InvalidOid,
+								  InvalidOid,
+								  InvalidOid,
+								  indexInfo,
+								  indexColNames,
+								  BTREE_AM_OID,
+								  InvalidOid,
+								  &collationObjectId, classObjectId, coloptions, (Datum) 0,
+								  INDEX_CREATE_IS_PRIMARY, 0, true, true, NULL);
+
+	ReleaseSysCache(tuple);
+
+	/* Make this table visible, else index creation will fail */
+	CommandCounterIncrement();
+
+	/* Unlock the index -- no one can see it anyway */
+	UnlockRelationOid(dirtable_idxid, AccessExclusiveLock);
+
+	return dirtable_idxid;
 }
 
 void

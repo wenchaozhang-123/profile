@@ -3,15 +3,16 @@
 --
 -- Display pg_tablespace, pg_directory_table, gp_storage_server, gp_storage_user_mapping catalog
 \d+ pg_tablespace;
-                                  Table "pg_catalog.pg_tablespace"
-     Column     |   Type    | Collation | Nullable | Default | Storage  | Stats target | Description 
-----------------+-----------+-----------+----------+---------+----------+--------------+-------------
- oid            | oid       |           | not null |         | plain    |              | 
- spcname        | name      |           | not null |         | plain    |              | 
- spcowner       | oid       |           | not null |         | plain    |              | 
- spcacl         | aclitem[] |           |          |         | extended |              | 
- spcoptions     | text[]    | C         |          |         | extended |              | 
- spcfilehandler | text      | C         |          |         | extended |              | 
+                                    Table "pg_catalog.pg_tablespace"
+      Column       |   Type    | Collation | Nullable | Default | Storage  | Stats target | Description 
+-------------------+-----------+-----------+----------+---------+----------+--------------+-------------
+ oid               | oid       |           | not null |         | plain    |              | 
+ spcname           | name      |           | not null |         | plain    |              | 
+ spcowner          | oid       |           | not null |         | plain    |              | 
+ spcacl            | aclitem[] |           |          |         | extended |              | 
+ spcoptions        | text[]    | C         |          |         | extended |              | 
+ spcfilehandlersrc | text      | C         |          |         | extended |              | 
+ spcfilehandlerbin | text      | C         |          |         | extended |              | 
 Indexes:
     "pg_tablespace_oid_index" PRIMARY KEY, btree (oid), tablespace "pg_global"
     "pg_tablespace_spcname_index" UNIQUE CONSTRAINT, btree (spcname), tablespace "pg_global"
@@ -564,7 +565,7 @@ SELECT relname, relisshared, relpersistence, relkind FROM pg_class WHERE relname
                                         Directory able "public.dir_table1"
     Column     |           Type           | Collation | Nullable | Default | Storage  | Stats target | Description 
 ---------------+--------------------------+-----------+----------+---------+----------+--------------+-------------
- relative_path | text                     |           | not null |         | extended |              | 
+ relative_path | text                     |           |          |         | extended |              | 
  size          | bigint                   |           |          |         | plain    |              | 
  last_modified | timestamp with time zone |           |          |         | plain    |              | 
  md5           | text                     |           |          |         | extended |              | 
@@ -577,7 +578,7 @@ Distributed by: (relative_path)
                                         Directory able "public.dir_table2"
     Column     |           Type           | Collation | Nullable | Default | Storage  | Stats target | Description 
 ---------------+--------------------------+-----------+----------+---------+----------+--------------+-------------
- relative_path | text                     |           | not null |         | extended |              | 
+ relative_path | text                     |           |          |         | extended |              | 
  size          | bigint                   |           |          |         | plain    |              | 
  last_modified | timestamp with time zone |           |          |         | plain    |              | 
  md5           | text                     |           |          |         | extended |              | 
@@ -590,7 +591,7 @@ Distributed by: (relative_path)
                                         Directory able "public.dir_table3"
     Column     |           Type           | Collation | Nullable | Default | Storage  | Stats target | Description 
 ---------------+--------------------------+-----------+----------+---------+----------+--------------+-------------
- relative_path | text                     |           | not null |         | extended |              | 
+ relative_path | text                     |           |          |         | extended |              | 
  size          | bigint                   |           |          |         | plain    |              | 
  last_modified | timestamp with time zone |           |          |         | plain    |              | 
  md5           | text                     |           |          |         | extended |              | 

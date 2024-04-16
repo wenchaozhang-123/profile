@@ -17,6 +17,7 @@
 #ifndef PG_DIRECTORY_TABLE_H
 #define PG_DIRECTORY_TABLE_H
 
+#include "access/table.h"
 #include "catalog/genbki.h"
 #include "catalog/pg_directory_table_d.h"
 #include "nodes/parsenodes.h"
@@ -64,6 +65,7 @@ extern DirectoryTable *GetDirectoryTable(Oid relId);
 extern bool RelationIsDirectoryTable(Oid relId);
 extern List *GetDirectoryTableSchema(void);
 extern DistributedBy *GetDirectoryTableDistributedBy(void);
+extern Oid CreateDirectoryTableIndex(Relation rel);
 extern void RemoveDirectoryTableEntry(Oid relId);
 extern FileAm *GetTablespaceFileHandler(Oid spcId);
 

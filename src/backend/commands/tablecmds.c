@@ -1176,6 +1176,11 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 */
 	rel = relation_open(relationId, AccessExclusiveLock);
 
+	if (relkind == RELKIND_DIRECTORY_TABLE)
+	{
+		CreateDirectoryTableIndex(rel);
+	}
+
 	/*
 	 * If this is an append-only relation, create the auxliary tables necessary
 	 */
