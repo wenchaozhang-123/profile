@@ -43,7 +43,7 @@ static int	localFileRead(UFile *file, char *buffer, int amount);
 static int	localFileWrite(UFile *file, char *buffer, int amount);
 static off_t localFileSize(UFile *file);
 static void localFileUnlink(Oid spcId, const char *fileName);
-static char *localFormatFileName(RelFileNode *relFileNode, const char *fileName);
+static char *localFormatPathName(RelFileNode *relFileNode);
 static bool localFileExists(Oid spcId, const char *fileName);
 static const char *localFileName(UFile *file);
 static const char *localGetLastError(void);
@@ -57,7 +57,7 @@ struct FileAm localFileAm = {
 	.write = localFileWrite,
 	.size = localFileSize,
 	.unlink = localFileUnlink,
-	.formatFileName = localFormatFileName,
+	.formatPathName = localFormatPathName,
 	.exists = localFileExists,
 	.name = localFileName,
 	.getLastError = localGetLastError,
@@ -271,14 +271,15 @@ localFileUnlink(Oid spcId, const char *fileName)
 }
 
 static char *
-localFormatFileName(RelFileNode *relFileNode, const char *fileName)
+localFormatPathName(RelFileNode *relFileNode)
 {
 	if (relFileNode->spcNode == DEFAULTTABLESPACE_OID)
-		return psprintf("base/%u/%s", relFileNode->dbNode, fileName);
+		return psprintf("base/%u/"UINT64_FORMAT"_dirtable/",
+				  		relFileNode->dbNode, relFileNode->relNode);
 	else
-		return psprintf("pg_tblspc/%u/%s/%u/"UINT64_FORMAT"_dirtable/%s",
-		relFileNode->spcNode, GP_TABLESPACE_VERSION_DIRECTORY,
-		relFileNode->dbNode, relFileNode->relNode, fileName);
+		return psprintf("pg_tblspc/%u/%s/%u/"UINT64_FORMAT"_dirtable/",
+						relFileNode->spcNode, GP_TABLESPACE_VERSION_DIRECTORY,
+						relFileNode->dbNode, relFileNode->relNode);
 }
 
 static bool
@@ -372,13 +373,13 @@ UFileUnlink(Oid spcId, const char *fileName)
 }
 
 char *
-UFileFormatFileName(RelFileNode *relFileNode, const char *fileName)
+UFileFormatPathName(RelFileNode *relFileNode)
 {
 	FileAm *fileAm;
 
 	fileAm = GetTablespaceFileHandler(relFileNode->spcNode);
 
-	return fileAm->formatFileName(relFileNode, fileName);
+	return fileAm->formatPathName(relFileNode);
 }
 
 bool

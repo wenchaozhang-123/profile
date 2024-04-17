@@ -147,7 +147,7 @@ GetTablespaceFileHandler(Oid spcId)
 	Assert(fileAm->write != NULL);
 	Assert(fileAm->size != NULL);
 	Assert(fileAm->unlink != NULL);
-	Assert(fileAm->formatFileName != NULL);
+	Assert(fileAm->formatPathName != NULL);
 	Assert(fileAm->exists != NULL);
 	Assert(fileAm->name != NULL);
 	Assert(fileAm->getLastError != NULL);

@@ -68,12 +68,6 @@ typedef struct TableFunctionContext
 
 Datum directory_table(PG_FUNCTION_ARGS);
 
-static char *
-getDirectoryTablePath(Oid spcId, Oid dbId, RelFileNodeId relFileId)
-{
-	return psprintf("pg_tblspc/%u/%s/%u/"UINT64_FORMAT"_dirtable", spcId, GP_TABLESPACE_VERSION_DIRECTORY, dbId, relFileId);
-}
-
 static Oid
 chooseTableSpace(CreateDirectoryTableStmt *stmt)
 {
@@ -128,13 +122,17 @@ CreateDirectoryTable(CreateDirectoryTableStmt *stmt, Oid relId)
 	Form_pg_class pg_class_tuple;
 	HeapTuple	class_tuple;
 	Oid 		spcId = chooseTableSpace(stmt);
+	RelFileNode relFileNode = {0};
 
 	class_tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(relId));
 	if (!HeapTupleIsValid(class_tuple))
 		elog(ERROR, "cache lookup failed for relation %u", relId);
 	pg_class_tuple = (Form_pg_class) GETSTRUCT(class_tuple);
 
-	dirTablePath = getDirectoryTablePath(spcId, MyDatabaseId, pg_class_tuple->relfilenode);
+	relFileNode.spcNode = spcId;
+	relFileNode.dbNode = MyDatabaseId;
+	relFileNode.relNode = pg_class_tuple->relfilenode;
+	dirTablePath = UFileFormatPathName(&relFileNode);
 
 	ReleaseSysCache(class_tuple);
 

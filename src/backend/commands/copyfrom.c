@@ -800,6 +800,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 	int64		processed = 0;
 	int64		fileSize = 0;
 	CdbCopy	   *cdbCopy = NULL;
+	char	   *dirTablePath;
 	char	   *orgiFileName;
 	char	   *relaFileName;
 	TupleDesc	tupdesc;
@@ -842,7 +843,8 @@ CopyFromDirectoryTable(CopyFromState cstate)
 	/* Assemble directory table file location. */
 	relaFileName = trimFilePath(glob_copystmt->dirfilename, '/');
 	dirTable = GetDirectoryTable(RelationGetRelid(cstate->rel));
-	orgiFileName = UFileFormatFileName(&cstate->rel->rd_node, relaFileName);
+	dirTablePath = UFileFormatPathName(&cstate->rel->rd_node);
+	orgiFileName = psprintf("%s/%s", dirTablePath, relaFileName);
 
 	/*
 	 * build tupledesc and slot for copy from
