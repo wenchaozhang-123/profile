@@ -341,7 +341,7 @@ CreateDirectoryTableIndex(Relation rel)
 								  indexInfo,
 								  indexColNames,
 								  BTREE_AM_OID,
-								  rel->rd_rel->reltablespace,
+								  InvalidOid,
 								  &collationObjectId, classObjectId, coloptions, (Datum) 0,
 								  INDEX_CREATE_IS_PRIMARY, 0, true, true, NULL);
 
