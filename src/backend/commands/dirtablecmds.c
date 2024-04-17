@@ -141,12 +141,9 @@ CreateDirectoryTable(CreateDirectoryTableStmt *stmt, Oid relId)
 	 * or CREATE DIRECTORY TABLE is running concurrently.
 	 */
 	LWLockAcquire(DirectoryTableLock, LW_EXCLUSIVE);
-	if (mkdir(dirTablePath, S_IRWXU) < 0)
-	{
-		ereport(ERROR,
-					(errcode_for_file_access(),
-					 errmsg("unable to create directory \"%s\"", dirTablePath)));
-	}
+
+	UFileEnsurePath(spcId, dirTablePath);
+
 	/*
 	 * Advance command counter to ensure the pg_attribute tuple is visible;
 	 * the tuple might be updated to add constraints in previous step.

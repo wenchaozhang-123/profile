@@ -44,6 +44,7 @@ static int	localFileWrite(UFile *file, char *buffer, int amount);
 static off_t localFileSize(UFile *file);
 static void localFileUnlink(Oid spcId, const char *fileName);
 static char *localFormatPathName(RelFileNode *relFileNode);
+static bool localEnsurePath(Oid spcId, const char *PathName);
 static bool localFileExists(Oid spcId, const char *fileName);
 static const char *localFileName(UFile *file);
 static const char *localGetLastError(void);
@@ -58,6 +59,7 @@ struct FileAm localFileAm = {
 	.size = localFileSize,
 	.unlink = localFileUnlink,
 	.formatPathName = localFormatPathName,
+	.ensurePath = localEnsurePath,
 	.exists = localFileExists,
 	.name = localFileName,
 	.getLastError = localGetLastError,
@@ -274,12 +276,31 @@ static char *
 localFormatPathName(RelFileNode *relFileNode)
 {
 	if (relFileNode->spcNode == DEFAULTTABLESPACE_OID)
-		return psprintf("base/%u/"UINT64_FORMAT"_dirtable/",
+		return psprintf("base/%u/"UINT64_FORMAT"_dirtable",
 				  		relFileNode->dbNode, relFileNode->relNode);
 	else
-		return psprintf("pg_tblspc/%u/%s/%u/"UINT64_FORMAT"_dirtable/",
+		return psprintf("pg_tblspc/%u/%s/%u/"UINT64_FORMAT"_dirtable",
 						relFileNode->spcNode, GP_TABLESPACE_VERSION_DIRECTORY,
 						relFileNode->dbNode, relFileNode->relNode);
+}
+
+bool
+localEnsurePath(Oid spcId, const char *PathName)
+{
+	struct stat st;
+	char *localPath;
+
+	localPath = pstrdup(PathName);
+
+	if (stat(localPath, &st) != 0 && pg_mkdir_p(localPath, S_IRWXU) != 0)
+	{
+		ereport(WARNING,
+				(errmsg("can not recursively create directory \"%s\"",
+						localPath)));
+		return false;
+	}
+
+	return true;
 }
 
 static bool
@@ -380,6 +401,16 @@ UFileFormatPathName(RelFileNode *relFileNode)
 	fileAm = GetTablespaceFileHandler(relFileNode->spcNode);
 
 	return fileAm->formatPathName(relFileNode);
+}
+
+bool
+UFileEnsurePath(Oid spcId, const char *pathName)
+{
+	FileAm *fileAm;
+
+	fileAm = GetTablespaceFileHandler(spcId);
+
+	return fileAm->ensurePath(spcId, pathName);
 }
 
 bool

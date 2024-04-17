@@ -28,6 +28,7 @@ typedef struct FileAm
 	int64_t (*size) (struct UFile *file);
 	void (*unlink) (Oid spcId, const char *fileName);
 	char* (*formatPathName) (RelFileNode *relFileNode);
+	bool (*ensurePath) (Oid spcId, const char *pathName);
 	bool (*exists) (Oid spcId, const char *fileName);
 	const char *(*name) (struct UFile *file);
 	const char *(*getLastError) (void);
@@ -53,6 +54,7 @@ extern const char *UFileName(UFile *file);
 
 extern void UFileUnlink(Oid spcId, const char *fileName);
 extern char* UFileFormatPathName(RelFileNode *relFileNode);
+extern bool UFileEnsurePath(Oid spcId, const char *pathName);
 extern bool UFileExists(Oid spcId, const char *fileName);
 
 extern const char *UFileGetLastError(UFile *file);

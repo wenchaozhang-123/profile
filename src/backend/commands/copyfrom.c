@@ -843,7 +843,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 	/* Assemble directory table file location. */
 	relaFileName = trimFilePath(glob_copystmt->dirfilename, '/');
 	dirTable = GetDirectoryTable(RelationGetRelid(cstate->rel));
-	dirTablePath = UFileFormatPathName(&cstate->rel->rd_node);
+	dirTablePath = dirTable->location;
 	orgiFileName = psprintf("%s/%s", dirTablePath, relaFileName);
 
 	/*
