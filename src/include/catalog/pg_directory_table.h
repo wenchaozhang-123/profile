@@ -59,6 +59,7 @@ typedef struct DirectoryTable
 	char 		*location;	/* location */
 } DirectoryTable;
 
+#define DIRECTORY_TABLE_RELATIVE_PATH_COLUMN_ATTRNUM	1
 #define DIRECTORY_TABLE_TAG_COLUMN_ATTNUM	5
 
 extern DirectoryTable *GetDirectoryTable(Oid relId);

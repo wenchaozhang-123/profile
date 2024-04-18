@@ -62,7 +62,10 @@
 #include "access/heaptoast.h"
 #include "access/sysattr.h"
 #include "access/tupdesc_details.h"
+#include "catalog/pg_directory_table.h"
+#include "commands/dirtablecmds.h"
 #include "executor/tuptable.h"
+#include "utils/builtins.h"
 #include "utils/expandeddatum.h"
 
 #include "catalog/pg_type.h"
@@ -637,6 +640,9 @@ Datum
 heap_getsysattr(HeapTuple tup, int attnum, TupleDesc tupleDesc, bool *isnull)
 {
 	Datum		result;
+	DirectoryTable *dirTable;
+	char *scopedFileUrl;
+	bool isNull;
 
 	Assert(tup);
 
@@ -671,6 +677,17 @@ heap_getsysattr(HeapTuple tup, int attnum, TupleDesc tupleDesc, bool *isnull)
 			break;
 		case GpSegmentIdAttributeNumber:                       /*CDB*/
 			result = Int32GetDatum(GpIdentity.segindex);
+			break;
+		case DirectoryTableScopedUrlAttributeNumber:
+			dirTable = GetDirectoryTable(tupleDesc->attrs[0].attrelid);
+			result = CStringGetTextDatum(GetScopedFileUrl(dirTable,
+									 TextDatumGetCString(heap_getattr(tup, DIRECTORY_TABLE_RELATIVE_PATH_COLUMN_ATTRNUM, tupleDesc, &isNull))));
+			break;
+		case DirectoryTableContentAttributeNumber:
+			dirTable = GetDirectoryTable(tupleDesc->attrs[0].attrelid);
+			scopedFileUrl = GetScopedFileUrl(dirTable,
+									TextDatumGetCString(heap_getattr(tup, DIRECTORY_TABLE_RELATIVE_PATH_COLUMN_ATTRNUM, tupleDesc, &isNull)));
+			result = GetFileContent(dirTable->spcId, scopedFileUrl);
 			break;
 		default:
 			elog(ERROR, "invalid attnum: %d", attnum);
