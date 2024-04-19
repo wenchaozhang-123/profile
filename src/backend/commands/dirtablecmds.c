@@ -173,7 +173,7 @@ CreateDirectoryTable(CreateDirectoryTableStmt *stmt, Oid relId)
 }
 
 Datum
-GetFileContent(Oid spcId, char *scopedFileUrl)
+GetFileContent(Oid spcId, char *filePath)
 {
 	char 	errorMessage[256];
 	char 	buffer[4096];
@@ -185,7 +185,7 @@ GetFileContent(Oid spcId, char *scopedFileUrl)
 	int64 	fileSize;
 
 	file = UFileOpen(spcId,
-				  	 scopedFileUrl,
+				  	 filePath,
 				  	 O_RDONLY,
 				  	 errorMessage,
 				  	 sizeof(errorMessage));
@@ -193,7 +193,7 @@ GetFileContent(Oid spcId, char *scopedFileUrl)
 	if (file == NULL)
 		ereport(ERROR,
 					(errcode(ERRCODE_INTERNAL_ERROR),
-					 errmsg("failed to open file \"%s\": %s,", scopedFileUrl, errorMessage)));
+					 errmsg("failed to open file \"%s\": %s,", filePath, errorMessage)));
 
 	fileSize = UFileSize(file);
 	content = (bytea *) palloc(fileSize + VARHDRSZ);
@@ -206,7 +206,7 @@ GetFileContent(Oid spcId, char *scopedFileUrl)
 		if (bytesRead == -1)
 			ereport(ERROR,
 					(errcode(ERRCODE_INTERNAL_ERROR),
-					 errmsg("failed to read file \"%s\": %s", scopedFileUrl, UFileGetLastError(file))));
+					 errmsg("failed to read file \"%s\": %s", filePath, UFileGetLastError(file))));
 
 		if (bytesRead == 0)
 			break;
@@ -221,7 +221,7 @@ GetFileContent(Oid spcId, char *scopedFileUrl)
 }
 
 char *
-GetScopedFileUrl(DirectoryTable *dirTable, char *relativePath)
+GetFilePath(DirectoryTable *dirTable, char *relativePath)
 {
 	return psprintf("%s/%s", dirTable->location, relativePath);
 }

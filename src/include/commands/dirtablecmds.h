@@ -21,7 +21,7 @@
 #include "parser/parse_node.h"
 
 extern void CreateDirectoryTable(CreateDirectoryTableStmt *stmt, Oid relId);
-extern char *GetScopedFileUrl(DirectoryTable *dirTable, char *relativePath);
-extern Datum GetFileContent(Oid spcId, char *scopedFileUrl);
+extern char *GetFilePath(DirectoryTable *dirTable, char *relativePath);
+extern Datum GetFileContent(Oid spcId, char *filePath);
 
 #endif //DIRTABLECMDS_H

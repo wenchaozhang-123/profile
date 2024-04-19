@@ -641,7 +641,7 @@ heap_getsysattr(HeapTuple tup, int attnum, TupleDesc tupleDesc, bool *isnull)
 {
 	Datum		result;
 	DirectoryTable *dirTable;
-	char *scopedFileUrl;
+	char *filePath;
 	bool isNull;
 
 	Assert(tup);
@@ -680,14 +680,14 @@ heap_getsysattr(HeapTuple tup, int attnum, TupleDesc tupleDesc, bool *isnull)
 			break;
 		case DirectoryTableScopedUrlAttributeNumber:
 			dirTable = GetDirectoryTable(tupleDesc->attrs[0].attrelid);
-			result = CStringGetTextDatum(GetScopedFileUrl(dirTable,
+			result = CStringGetTextDatum(GetFilePath(dirTable,
 									 TextDatumGetCString(heap_getattr(tup, DIRECTORY_TABLE_RELATIVE_PATH_COLUMN_ATTRNUM, tupleDesc, &isNull))));
 			break;
 		case DirectoryTableContentAttributeNumber:
 			dirTable = GetDirectoryTable(tupleDesc->attrs[0].attrelid);
-			scopedFileUrl = GetScopedFileUrl(dirTable,
+			filePath = GetFilePath(dirTable,
 									TextDatumGetCString(heap_getattr(tup, DIRECTORY_TABLE_RELATIVE_PATH_COLUMN_ATTRNUM, tupleDesc, &isNull)));
-			result = GetFileContent(dirTable->spcId, scopedFileUrl);
+			result = GetFileContent(dirTable->spcId, filePath);
 			break;
 		default:
 			elog(ERROR, "invalid attnum: %d", attnum);
