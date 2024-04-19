@@ -1674,6 +1674,8 @@ RemoveRelations(DropStmt *drop)
 	ListCell   *cell;
 	int			flags = 0;
 	LOCKMODE	lockmode = AccessExclusiveLock;
+	HeapTuple	indexTuple;
+	Form_pg_index index;
 
 	/* DROP CONCURRENTLY uses a weaker lock, and has some restrictions */
 	if (drop->concurrent)
@@ -1778,6 +1780,20 @@ RemoveRelations(DropStmt *drop)
 		{
 			DropErrorMsgNonExistent(rel, relkind, drop->missing_ok);
 			continue;
+		}
+
+		if (relkind == RELKIND_INDEX)
+		{
+			indexTuple = SearchSysCache1(INDEXRELID, ObjectIdGetDatum(relOid));
+			if (!HeapTupleIsValid(indexTuple) && !drop->missing_ok)	/* should not happen */
+				elog(ERROR, "cache lookup failed for index %u", relOid);
+			if (HeapTupleIsValid(indexTuple))
+			{
+				index = (Form_pg_index) GETSTRUCT(indexTuple);
+				if (RelationIsDirectoryTable(index->indrelid))
+					elog(ERROR, "Disallowed to drop index on directory table %u.", index->indrelid);
+				ReleaseSysCache(indexTuple);
+			}
 		}
 
 		/*
