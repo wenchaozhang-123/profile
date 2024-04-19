@@ -87,6 +87,9 @@ chooseTableSpace(CreateDirectoryTableStmt *stmt)
 	if (!OidIsValid(tablespaceId))
 		tablespaceId = GetDefaultTablespace(stmt->base.relation->relpersistence, false);
 
+	if (!OidIsValid(tablespaceId))
+		tablespaceId = tablespaceId ? tablespaceId : MyDatabaseTableSpace;
+
 	/* Check permissions except when using database's default */
 	if (OidIsValid(tablespaceId) && tablespaceId != MyDatabaseTableSpace)
 	{
