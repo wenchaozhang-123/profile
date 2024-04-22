@@ -780,7 +780,7 @@ ERROR:  Only support copy binary from directory table.
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv';    -- fail
 ERROR:  Copy from directory table file name can't be null.
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation1';
-NOTICE:  dir_table1 INSERT AFTER ROW  (seg1 127.0.1.1:7003 pid=15072)
+NOTICE:  dir_table1 INSERT AFTER ROW  (seg1 127.0.1.1:7003 pid=31465)
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation1'; -- fail
 ERROR:  duplicate key value violates unique constraint "dir_table1_pkey"
 DETAIL:  Key (relative_path)=(nation1) already exists.
@@ -789,9 +789,9 @@ ERROR:  syntax error at or near "'nation2'"
 LINE 1: COPY BINARY dir_table1 FROM STDIN 'nation2' 'nation2'; -- fa...
                                                     ^
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation2';
-NOTICE:  dir_table1 INSERT AFTER ROW  (seg2 127.0.1.1:7004 pid=15073)
+NOTICE:  dir_table1 INSERT AFTER ROW  (seg2 127.0.1.1:7004 pid=31466)
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation3' WITH TAG 'nation';
-NOTICE:  dir_table1 INSERT AFTER ROW  (seg1 127.0.1.1:7003 pid=15072)
+NOTICE:  dir_table1 INSERT AFTER ROW  (seg1 127.0.1.1:7003 pid=31465)
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation3' WITH TAG 'nation';    -- fail
 ERROR:  duplicate key value violates unique constraint "dir_table1_pkey"
 DETAIL:  Key (relative_path)=(nation3) already exists.
@@ -799,7 +799,7 @@ DETAIL:  Key (relative_path)=(nation3) already exists.
 ERROR:  duplicate key value violates unique constraint "dir_table1_pkey"
 DETAIL:  Key (relative_path)=(nation3) already exists.
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation4' WITH TAG 'nation';
-NOTICE:  dir_table1 INSERT AFTER ROW  (seg2 127.0.1.1:7004 pid=15073)
+NOTICE:  dir_table1 INSERT AFTER ROW  (seg2 127.0.1.1:7004 pid=31466)
 \COPY BINARY dir_table1 FROM '@abs_srcdir@/data/nation.csv' 'nation5' WITH TAG 'nation' WITH TAG 'nation2';    -- fail
 ERROR:  syntax error at or near "WITH"
 LINE 1: ...dir_table1 FROM STDIN 'nation5' WITH TAG 'nation' WITH TAG '...
@@ -1079,18 +1079,18 @@ ANALYZE dir_table1;
 ANALYZE dir_table2;
 EXPLAIN (COSTS OFF) SELECT dir_table1.relative_path FROM dir_table1, dir_table2
 WHERE dir_table1.relative_path = dir_table2.relative_path ORDER BY 1;
-                                   QUERY PLAN                                   
---------------------------------------------------------------------------------
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Merge Key: dir_table1.relative_path
    ->  Sort
          Sort Key: dir_table1.relative_path
-         ->  Hash Join
-               Hash Cond: (dir_table1.relative_path = dir_table2.relative_path)
+         ->  Nested Loop
+               Join Filter: true
                ->  Seq Scan on dir_table1
-               ->  Hash
-                     ->  Seq Scan on dir_table2
- Optimizer: Postgres query optimizer
+               ->  Index Scan using dir_table2_pkey on dir_table2
+                     Index Cond: (relative_path = dir_table1.relative_path)
+ Optimizer: Pivotal Optimizer (GPORCA)
 (10 rows)
 
 SELECT dir_table1.relative_path FROM dir_table1, dir_table2
@@ -1105,8 +1105,8 @@ WHERE dir_table1.relative_path = dir_table2.relative_path ORDER BY 1;
 
 EXPLAIN (COSTS OFF) SELECT dir_table1.relative_path FROM dir_table1, dir_table2
 WHERE dir_table1.size = dir_table2.size ORDER BY 1 LIMIT 1;
-                                     QUERY PLAN                                     
-------------------------------------------------------------------------------------
+                                   QUERY PLAN                                    
+---------------------------------------------------------------------------------
  Limit
    ->  Gather Motion 3:1  (slice1; segments: 3)
          Merge Key: dir_table1.relative_path
@@ -1115,15 +1115,12 @@ WHERE dir_table1.size = dir_table2.size ORDER BY 1 LIMIT 1;
                      Sort Key: dir_table1.relative_path
                      ->  Hash Join
                            Hash Cond: (dir_table1.size = dir_table2.size)
-                           ->  Redistribute Motion 3:3  (slice2; segments: 3)
-                                 Hash Key: dir_table1.size
-                                 ->  Seq Scan on dir_table1
+                           ->  Seq Scan on dir_table1
                            ->  Hash
-                                 ->  Redistribute Motion 3:3  (slice3; segments: 3)
-                                       Hash Key: dir_table2.size
+                                 ->  Broadcast Motion 3:3  (slice2; segments: 3)
                                        ->  Seq Scan on dir_table2
- Optimizer: Postgres query optimizer
-(16 rows)
+ Optimizer: Pivotal Optimizer (GPORCA)
+(13 rows)
 
 SELECT dir_table1.relative_path FROM dir_table1, dir_table2
 WHERE dir_table1.size = dir_table2.size ORDER BY 1 LIMIT 1;
@@ -1134,25 +1131,20 @@ WHERE dir_table1.size = dir_table2.size ORDER BY 1 LIMIT 1;
 
 EXPLAIN (COSTS OFF) SELECT dir_table1.relative_path FROM dir_table1, dir_table2
 WHERE dir_table1.md5 = dir_table2.md5 ORDER BY 1 LIMIT 1;
-                                     QUERY PLAN                                     
-------------------------------------------------------------------------------------
+                            QUERY PLAN                            
+------------------------------------------------------------------
  Limit
-   ->  Gather Motion 3:1  (slice1; segments: 3)
-         Merge Key: dir_table1.relative_path
-         ->  Limit
-               ->  Sort
-                     Sort Key: dir_table1.relative_path
-                     ->  Hash Join
-                           Hash Cond: (dir_table1.md5 = dir_table2.md5)
-                           ->  Redistribute Motion 3:3  (slice2; segments: 3)
-                                 Hash Key: dir_table1.md5
-                                 ->  Seq Scan on dir_table1
-                           ->  Hash
-                                 ->  Redistribute Motion 3:3  (slice3; segments: 3)
-                                       Hash Key: dir_table2.md5
-                                       ->  Seq Scan on dir_table2
- Optimizer: Postgres query optimizer
-(16 rows)
+   ->  Sort
+         Sort Key: dir_table1.relative_path
+         ->  Hash Join
+               Hash Cond: (dir_table1.md5 = dir_table2.md5)
+               ->  Gather Motion 3:1  (slice1; segments: 3)
+                     ->  Seq Scan on dir_table1
+               ->  Hash
+                     ->  Gather Motion 3:1  (slice2; segments: 3)
+                           ->  Seq Scan on dir_table2
+ Optimizer: Pivotal Optimizer (GPORCA)
+(11 rows)
 
 SELECT dir_table1.relative_path FROM dir_table1, dir_table2
 WHERE dir_table1.md5 = dir_table2.md5 ORDER BY 1 LIMIT 1;
@@ -1163,20 +1155,23 @@ WHERE dir_table1.md5 = dir_table2.md5 ORDER BY 1 LIMIT 1;
 
 EXPLAIN (COSTS OFF) SELECT dir_table1.relative_path FROM dir_table1, dir_table2
 WHERE dir_table1.tag = dir_table2.tag ORDER BY 1;
-                          QUERY PLAN                           
----------------------------------------------------------------
+                               QUERY PLAN                               
+------------------------------------------------------------------------
  Gather Motion 3:1  (slice1; segments: 3)
    Merge Key: dir_table1.relative_path
    ->  Sort
          Sort Key: dir_table1.relative_path
          ->  Hash Join
-               Hash Cond: (dir_table2.tag = dir_table1.tag)
-               ->  Broadcast Motion 3:3  (slice2; segments: 3)
-                     ->  Seq Scan on dir_table2
-               ->  Hash
+               Hash Cond: (dir_table1.tag = dir_table2.tag)
+               ->  Redistribute Motion 3:3  (slice2; segments: 3)
+                     Hash Key: dir_table1.tag
                      ->  Seq Scan on dir_table1
- Optimizer: Postgres query optimizer
-(11 rows)
+               ->  Hash
+                     ->  Redistribute Motion 3:3  (slice3; segments: 3)
+                           Hash Key: dir_table2.tag
+                           ->  Seq Scan on dir_table2
+ Optimizer: Pivotal Optimizer (GPORCA)
+(14 rows)
 
 SELECT dir_table1.relative_path FROM dir_table1, dir_table2
 WHERE dir_table1.tag = dir_table2.tag ORDER BY 1;
@@ -1250,17 +1245,17 @@ ERROR:  Only allow to update directory "tag" column.
 UPDATE dir_table2 SET md5 = '70f09140d1b83eb3ecf9a0e28494d2a4' WHERE relative_path = 'nation4'; -- fail
 ERROR:  Only allow to update directory "tag" column.
 UPDATE dir_table1 SET tag = 'nation_new_tag';  -- ok
-NOTICE:  dir_table1 UPDATE BEFORE ROW  (seg1 127.0.1.1:7003 pid=15072)
-NOTICE:  dir_table1 UPDATE BEFORE ROW  (seg1 127.0.1.1:7003 pid=15072)
-NOTICE:  dir_table1 UPDATE BEFORE ROW  (seg2 127.0.1.1:7004 pid=15073)
-NOTICE:  dir_table1 UPDATE AFTER ROW  (seg1 127.0.1.1:7003 pid=15072)
-NOTICE:  dir_table1 UPDATE AFTER ROW  (seg1 127.0.1.1:7003 pid=15072)
-NOTICE:  dir_table1 UPDATE BEFORE ROW  (seg2 127.0.1.1:7004 pid=15073)
-NOTICE:  dir_table1 UPDATE AFTER ROW  (seg2 127.0.1.1:7004 pid=15073)
-NOTICE:  dir_table1 UPDATE AFTER ROW  (seg2 127.0.1.1:7004 pid=15073)
+NOTICE:  dir_table1 UPDATE BEFORE ROW  (seg1 127.0.1.1:7003 pid=31465)
+NOTICE:  dir_table1 UPDATE BEFORE ROW  (seg1 127.0.1.1:7003 pid=31465)
+NOTICE:  dir_table1 UPDATE BEFORE ROW  (seg2 127.0.1.1:7004 pid=31466)
+NOTICE:  dir_table1 UPDATE BEFORE ROW  (seg2 127.0.1.1:7004 pid=31466)
+NOTICE:  dir_table1 UPDATE AFTER ROW  (seg2 127.0.1.1:7004 pid=31466)
+NOTICE:  dir_table1 UPDATE AFTER ROW  (seg1 127.0.1.1:7003 pid=31465)
+NOTICE:  dir_table1 UPDATE AFTER ROW  (seg1 127.0.1.1:7003 pid=31465)
+NOTICE:  dir_table1 UPDATE AFTER ROW  (seg2 127.0.1.1:7004 pid=31466)
 UPDATE dir_table1 SET tag = 'nation2_new_tag' WHERE relative_path = 'nation2';  -- ok
-NOTICE:  dir_table1 UPDATE BEFORE ROW  (seg2 127.0.1.1:7004 pid=15073)
-NOTICE:  dir_table1 UPDATE AFTER ROW  (seg2 127.0.1.1:7004 pid=15073)
+NOTICE:  dir_table1 UPDATE BEFORE ROW  (seg2 127.0.1.1:7004 pid=31466)
+NOTICE:  dir_table1 UPDATE AFTER ROW  (seg2 127.0.1.1:7004 pid=31466)
 UPDATE dir_table2 SET tag = 'nation4_new_tag' WHERE relative_path = 'nation3';  -- ok
 UPDATE dir_table1 SET tag = 'failed_tag' WHERE relative_path = 'not_exist_path';
 UPDATE dir_table2 SET tag = 'no_tag' WHERE relative_path = 'not_exist_path';

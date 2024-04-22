@@ -196,16 +196,16 @@ SELECT srvname, srvacl, srvoptions from gp_storage_server ORDER BY 1;
 SELECT count(*) FROM pg_directory_table;
 SELECT relname, relisshared, relpersistence, relkind FROM pg_class WHERE relname like '%dir_table%' ORDER BY 1;
 
-CREATE DIRECTORY TABLE dir_table1;  -- fail
+CREATE DIRECTORY TABLE dir_table1;
 CREATE DIRECTORY TABLE dir_table2 TABLESPACE directory_tblspc;
 CREATE DIRECTORY TABLE dir_table3 TABLESPACE directory_tblspc DISTRIBUTED BY(relative_path);    -- fail
 CREATE DIRECTORY TABLE dir_table3 TABLESPACE directory_tblspc DISTRIBUTED RANDOMLY; -- fail
 CREATE DIRECTORY TABLE dir_table3 TABLESPACE directory_tblspc DISTRIBUTED REPLICATED;   -- fail
 CREATE DIRECTORY TABLE dir_table3 TABLESPACE directory_tblspc;
-CREATE DIRECTORY TABLE IF NOT EXISTS dir_table1 TABLESPACE directory_tblspc;
+CREATE DIRECTORY TABLE IF NOT EXISTS dir_table4 TABLESPACE directory_tblspc;
 CREATE DIRECTORY TABLE IF NOT EXISTS dir_table2 TABLESPACE directory_tblspc;    -- fail
-CREATE DIRECTORY TABLE dir_table4 TABLESPACE directory_tblspc;
 CREATE DIRECTORY TABLE dir_table5 TABLESPACE directory_tblspc;
+CREATE DIRECTORY TABLE dir_table6 TABLESPACE pg_default;
 
 \dY
 SELECT count(*) FROM pg_directory_table;
@@ -239,6 +239,54 @@ SELECT relname, relisshared, relpersistence, relkind FROM pg_class WHERE relname
 SELECT count(*) FROM pg_directory_table;
 SELECT relname, relisshared, relpersistence, relkind FROM pg_class WHERE relname like '%dir_table%' ORDER BY 1;
 \c regression
+
+-- Test CREATE/DROP/REINDEX on DIRECTORY SCHEMA TABLE
+-- Test CREATE INDEX on DIRECTORY SCHEMA TABLE
+CREATE INDEX dirtable1_relative_path_idx on dir_table1(relative_path);    -- fail
+CREATE INDEX dirtable1_size_idx on dir_table1(size);  -- fail
+CREATE INDEX dirtable1_last_modified_idx on dir_table1(last_modified);    -- fail
+CREATE INDEX dirtable1_md5_idx on dir_table1(md5);    -- fail
+CREATE INDEX dirtable1_tag_idx on dir_table1(tag);    -- fail
+\d+ dir_table1;
+
+-- Test DROP INDEX on DIRECTORY SCHEMA TABLE
+DROP INDEX dir_table1_pkey; -- fail
+DROP INDEX dir_table2_pkey; -- fail
+DROP INDEX dir_table3_pkey; -- fail
+DROP INDEX dir_table4_pkey; -- fail
+DROP INDEX dir_table5_pkey; -- fail
+DROP INDEX dir_table6_pkey; -- fail
+
+-- Test REINDEX on DIRECTORY SCHEMA TABLE
+REINDEX INDEX dir_table1_pkey;
+REINDEX INDEX dir_table2_pkey;
+REINDEX INDEX dir_table3_pkey;
+REINDEX INDEX dir_table4_pkey;
+REINDEX INDEX dir_table5_pkey;
+REINDEX INDEX dir_table6_pkey;
+
+REINDEX TABLE dir_table1;
+REINDEX TABLE dir_table2;
+REINDEX TABLE dir_table3;
+REINDEX TABLE dir_table4;
+REINDEX TABLE dir_table5;
+REINDEX TABLE dir_table6;
+
+-- Test triggers
+create function trigtest() returns trigger as $$
+begin
+	raise notice '% % % %', TG_TABLE_NAME, TG_OP, TG_WHEN, TG_LEVEL;
+	return new;
+end;$$ language plpgsql;
+
+create trigger trigtest_b_row_tg_dirtable_1 before insert or update or delete on dir_table1
+for each row execute procedure trigtest();
+create trigger trigtest_a_row_tg_dirtable_1 after insert or update or delete on dir_table1
+for each row execute procedure trigtest();
+create trigger trigtest_b_stmt_tg_dirtable_1 before insert or update or delete on dir_table1
+for each statement execute procedure trigtest();
+create trigger trigtest_a_stmt_tg_dirtable_1 after insert or update or delete on dir_table1
+for each statement execute procedure trigtest();
 
 -- Test COPY DIRECTORY TABLE syntax
 SELECT relative_path, size, tag FROM dir_table1 ORDER BY 1;
@@ -337,6 +385,30 @@ COPY dir_table2 TO '@abs_srcdir@/data/dir_table2';  -- fail
 COPY BINARY dir_table2 TO '@abs_srcdir@/data/dir_table2';  -- fail
 SELECT relative_path, size, tag FROM dir_table1 ORDER BY 1;
 SELECT relative_path, size, tag FROM dir_table2 ORDER BY 1;
+
+-- Test join between two directory schema tables
+ANALYZE dir_table1;
+ANALYZE dir_table2;
+
+EXPLAIN (COSTS OFF) SELECT dir_table1.relative_path FROM dir_table1, dir_table2
+WHERE dir_table1.relative_path = dir_table2.relative_path ORDER BY 1;
+SELECT dir_table1.relative_path FROM dir_table1, dir_table2
+WHERE dir_table1.relative_path = dir_table2.relative_path ORDER BY 1;
+
+EXPLAIN (COSTS OFF) SELECT dir_table1.relative_path FROM dir_table1, dir_table2
+WHERE dir_table1.size = dir_table2.size ORDER BY 1 LIMIT 1;
+SELECT dir_table1.relative_path FROM dir_table1, dir_table2
+WHERE dir_table1.size = dir_table2.size ORDER BY 1 LIMIT 1;
+
+EXPLAIN (COSTS OFF) SELECT dir_table1.relative_path FROM dir_table1, dir_table2
+WHERE dir_table1.md5 = dir_table2.md5 ORDER BY 1 LIMIT 1;
+SELECT dir_table1.relative_path FROM dir_table1, dir_table2
+WHERE dir_table1.md5 = dir_table2.md5 ORDER BY 1 LIMIT 1;
+
+EXPLAIN (COSTS OFF) SELECT dir_table1.relative_path FROM dir_table1, dir_table2
+WHERE dir_table1.tag = dir_table2.tag ORDER BY 1;
+SELECT dir_table1.relative_path FROM dir_table1, dir_table2
+WHERE dir_table1.tag = dir_table2.tag ORDER BY 1;
 
 -- Test DML directory schema table, only allow to update tag
 INSERT INTO dir_table1 VALUES('insert');    -- fail
@@ -524,6 +596,10 @@ DROP DIRECTORY TABLE IF EXISTS dir_table1;
 DROP DIRECTORY TABLE IF EXISTS dir_table2;
 DROP DIRECTORY TABLE IF EXISTS dir_table3;
 DROP DIRECTORY TABLE IF EXISTS dir_table4;
+DROP DIRECTORY TABLE IF EXISTS dir_table5;
+DROP DIRECTORY TABLE IF EXISTS dir_table6;
+
+DROP FUNCTION IF EXISTS trigtest;
 
 DROP STORAGE USER MAPPING IF EXISTS FOR CURRENT_USER STORAGE SERVER oss_server1;
 DROP STORAGE USER MAPPING IF EXISTS FOR CURRENT_USER STORAGE SERVER oss_server2;
@@ -561,5 +637,10 @@ DROP FUNCTION IF EXISTS file_md5;
 DROP FUNCTION IF EXISTS md5_equal;
 
 DROP DATABASE dirtable_db;
+
+DROP TRIGGER IF EXISTS trigtest_b_row_tg_dirtable_1 ON dir_table1;
+DROP TRIGGER IF EXISTS trigtest_a_row_tg_dirtable_1 ON dir_table1;
+DROP TRIGGER IF EXISTS trigtest_b_stmt_tg_dirtable_1 ON dir_table1;
+DROP TRIGGER IF EXISTS trigtest_a_stmt_tg_dirtable_1 ON dir_table1;
 
 DROP TABLESPACE directory_tblspc;

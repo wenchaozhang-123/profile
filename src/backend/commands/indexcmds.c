@@ -706,7 +706,7 @@ DefineIndex(Oid relationId,
 	Oid			blkdirrelid = InvalidOid;
 
 	if (RelationIsDirectoryTable(relationId))
-		elog(ERROR, "Disallowed to create index on directory table %u.", relationId);
+		elog(ERROR, "Disallowed to create index on directory table \"%s\".", get_rel_name(relationId));
 
 	shouldDispatch = (Gp_role == GP_ROLE_DISPATCH &&
 					  ENABLE_DISPATCH() &&

@@ -1791,7 +1791,8 @@ RemoveRelations(DropStmt *drop)
 			{
 				index = (Form_pg_index) GETSTRUCT(indexTuple);
 				if (RelationIsDirectoryTable(index->indrelid))
-					elog(ERROR, "Disallowed to drop index on directory table %u.", index->indrelid);
+					elog(ERROR, "Disallowed to drop index \"%s\" on directory table \"%s\".",
+		  				 get_rel_name(index->indexrelid), get_rel_name(index->indrelid));
 				ReleaseSysCache(indexTuple);
 			}
 		}
