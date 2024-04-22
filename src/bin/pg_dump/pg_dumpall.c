@@ -1781,7 +1781,8 @@ dumpTablespaces(PGconn *conn)
 						   " AS rspcacl, "
 						   "array_to_string(spcoptions, ', '),"
 						   "pg_catalog.shobj_description(oid, 'pg_tablespace'), "
-						   "spcfilehandler AS spchandler "
+						   "spcfilehandlersrc AS spchandlersrc "
+						   "spcfilehandlerbin AS spchandlerbin"
 						   "FROM pg_catalog.pg_tablespace "
 						   "WHERE spcname !~ '^pg_' "
 						   "ORDER BY 1");
@@ -1868,7 +1869,8 @@ dumpTablespaces(PGconn *conn)
 		char	   *rspcacl = PQgetvalue(res, i, 5);
 		char	   *spcoptions = PQgetvalue(res, i, 6);
 		char	   *spccomment = PQgetvalue(res, i, 7);
-		char	   *spchandler = PQgetvalue(res, i, 8);
+		char	   *spchandlersrc = PQgetvalue(res, i, 8);
+		char	   *spchandlerbin = PQgetvalue(res, i, 9);
 		char	   *fspcname;
 
 		/* needed for buildACLCommands() */
@@ -1879,10 +1881,12 @@ dumpTablespaces(PGconn *conn)
 
 		appendPQExpBufferStr(buf, " LOCATION ");
 		appendStringLiteralConn(buf, spclocation, conn);
-		if (spchandler && spchandler[0] != '\0')
+		if (spchandlersrc && spchandlersrc[0] != '\0')
 		{
 			appendPQExpBufferStr(buf, " HANDLER ");
-			appendStringLiteralConn(buf, spchandler, conn);
+			appendStringLiteralConn(buf, spchandlersrc, conn);
+			appendPQExpBufferStr(buf, ", ");
+			appendStringLiteralConn(buf, spchandlerbin, conn);
 		}
 		appendPQExpBufferStr(buf, ";\n");
 
