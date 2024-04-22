@@ -99,12 +99,6 @@ DirectoryTableDropStorage(Relation rel)
 		aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_TABLESPACE,
 					   tablespace_name);
 
-	/* Disallow drop of the standard tablespaces, even by superuser */
-	if (tablespaceoid == GLOBALTABLESPACE_OID ||
-		tablespaceoid == DEFAULTTABLESPACE_OID)
-		aclcheck_error(ACLCHECK_NO_PRIV, OBJECT_TABLESPACE,
-					   tablespace_name);
-
 	table_endscan(scandesc);
 	table_close(spcrel, RowExclusiveLock);
 
