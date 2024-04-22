@@ -199,6 +199,11 @@ getFileContent(Oid spcId, char *scopedFileUrl)
 					 errmsg("failed to open file \"%s\": %s,", scopedFileUrl, errorMessage)));
 
 	fileSize = UFileSize(file);
+	if (fileSize > MaxAllocSize - VARHDRSZ)
+		ereport(ERROR,
+					(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+					 errmsg("out of memory")));
+
 	content = (bytea *) palloc(fileSize + VARHDRSZ);
 	SET_VARSIZE(content, fileSize + VARHDRSZ);
 	data = VARDATA(content);
