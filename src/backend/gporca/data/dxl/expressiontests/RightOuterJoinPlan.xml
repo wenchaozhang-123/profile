@@ -60,8 +60,6 @@
               <dxl:Column ColId="7" Attno="-6" ColName="cmax" TypeMdid="0.29.1.0"/>
               <dxl:Column ColId="8" Attno="-7" ColName="tableoid" TypeMdid="0.26.1.0"/>
               <dxl:Column ColId="9" Attno="-8" ColName="gp_segment_id" TypeMdid="0.23.1.0"/>
-              <dxl:Column ColId="10" Attno="-9" ColName="file_path" TypeMdid="0.25.1.0"/>
-              <dxl:Column ColId="11" Attno="-10" ColName="file_content" TypeMdid="0.17.1.0"/>
             </dxl:Columns>
           </dxl:TableDescriptor>
         </dxl:TableScan>
@@ -90,8 +88,6 @@
               <dxl:Column ColId="17" Attno="-6" ColName="cmax" TypeMdid="0.29.1.0"/>
               <dxl:Column ColId="18" Attno="-7" ColName="tableoid" TypeMdid="0.26.1.0"/>
               <dxl:Column ColId="19" Attno="-8" ColName="gp_segment_id" TypeMdid="0.23.1.0"/>
-              <dxl:Column ColId="20" Attno="-9" ColName="file_path" TypeMdid="0.25.1.0"/>
-              <dxl:Column ColId="21" Attno="-10" ColName="file_content" TypeMdid="0.17.1.0"/>
             </dxl:Columns>
           </dxl:TableDescriptor>
         </dxl:TableScan>

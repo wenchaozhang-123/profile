@@ -127,8 +127,6 @@
                   <dxl:Column ColId="6" Attno="-6" ColName="cmax" TypeMdid="0.29.1.0"/>
                   <dxl:Column ColId="7" Attno="-7" ColName="tableoid" TypeMdid="0.26.1.0"/>
                   <dxl:Column ColId="8" Attno="-8" ColName="gp_segment_id" TypeMdid="0.23.1.0"/>
-                  <dxl:Column ColId="9" Attno="-9" ColName="file_path" TypeMdid="0.25.1.0"/>
-                  <dxl:Column ColId="10" Attno="-10" ColName="file_content" TypeMdid="0.17.1.0"/>
                 </dxl:Columns>
               </dxl:TableDescriptor>
             </dxl:DynamicTableScan>
@@ -157,8 +155,6 @@
                 <dxl:Column ColId="15" Attno="-6" ColName="cmax" TypeMdid="0.29.1.0"/>
                 <dxl:Column ColId="16" Attno="-7" ColName="tableoid" TypeMdid="0.26.1.0"/>
                 <dxl:Column ColId="17" Attno="-8" ColName="gp_segment_id" TypeMdid="0.23.1.0"/>
-                <dxl:Column ColId="18" Attno="-9" ColName="file_path" TypeMdid="0.25.1.0"/>
-                <dxl:Column ColId="29" Attno="-10" ColName="file_content" TypeMdid="0.17.1.0"/>
               </dxl:Columns>
             </dxl:TableDescriptor>
           </dxl:TableScan>
@@ -257,8 +253,6 @@
                     <dxl:Column ColId="24" Attno="-6" ColName="cmax" TypeMdid="0.29.1.0"/>
                     <dxl:Column ColId="25" Attno="-7" ColName="tableoid" TypeMdid="0.26.1.0"/>
                     <dxl:Column ColId="26" Attno="-8" ColName="gp_segment_id" TypeMdid="0.23.1.0"/>
-                    <dxl:Column ColId="27" Attno="-9" ColName="file_path" TypeMdid="0.25.1.0"/>
-                    <dxl:Column ColId="28" Attno="-10" ColName="file_content" TypeMdid="0.17.1.0"/>
                   </dxl:Columns>
                 </dxl:TableDescriptor>
               </dxl:TableScan>
@@ -324,8 +318,6 @@
                     <dxl:Column ColId="33" Attno="-6" ColName="cmax" TypeMdid="0.29.1.0"/>
                     <dxl:Column ColId="34" Attno="-7" ColName="tableoid" TypeMdid="0.26.1.0"/>
                     <dxl:Column ColId="35" Attno="-8" ColName="gp_segment_id" TypeMdid="0.23.1.0"/>
-                    <dxl:Column ColId="36" Attno="-9" ColName="file_path" TypeMdid="0.25.1.0"/>
-                    <dxl:Column ColId="37" Attno="-10" ColName="file_content" TypeMdid="0.17.1.0"/>
                   </dxl:Columns>
                 </dxl:TableDescriptor>
               </dxl:DynamicTableScan>

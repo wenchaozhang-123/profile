@@ -68,8 +68,6 @@
               <dxl:Column ColId="769" Attno="-6" ColName="cmax" TypeMdid="0.29.1.0"/>
               <dxl:Column ColId="770" Attno="-7" ColName="tableoid" TypeMdid="0.26.1.0"/>
               <dxl:Column ColId="771" Attno="-8" ColName="gp_segment_id" TypeMdid="0.23.1.0"/>
-              <dxl:Column ColId="772" Attno="-9" ColName="file_path" TypeMdid="0.25.1.0"/>
-              <dxl:Column ColId="773" Attno="-10" ColName="file_content" TypeMdid="0.17.1.0"/>
             </dxl:Columns>
           </dxl:TableDescriptor>
         </dxl:TableScan>
