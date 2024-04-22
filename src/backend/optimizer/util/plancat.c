@@ -2049,7 +2049,7 @@ build_index_tlist(PlannerInfo *root, IndexOptInfo *index,
 			const FormData_pg_attribute *att_tup;
 
 			if (indexkey < 0)
-				att_tup = SystemAttributeDefinition(InvalidOid, indexkey);
+				att_tup = SystemAttributeDefinition(indexkey);
 			else
 				att_tup = TupleDescAttr(heapRelation->rd_att, indexkey - 1);
 

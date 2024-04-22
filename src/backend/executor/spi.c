@@ -1136,7 +1136,7 @@ SPI_fname(TupleDesc tupdesc, int fnumber)
 	if (fnumber > 0)
 		att = TupleDescAttr(tupdesc, fnumber - 1);
 	else
-		att = SystemAttributeDefinition(tupdesc->attrs[0].attrelid, fnumber);
+		att = SystemAttributeDefinition(fnumber);
 
 	return pstrdup(NameStr(att->attname));
 }
@@ -1166,7 +1166,7 @@ SPI_getvalue(HeapTuple tuple, TupleDesc tupdesc, int fnumber)
 	if (fnumber > 0)
 		typoid = TupleDescAttr(tupdesc, fnumber - 1)->atttypid;
 	else
-		typoid = (SystemAttributeDefinition(tupdesc->attrs[0].attrelid, fnumber))->atttypid;
+		typoid = (SystemAttributeDefinition(fnumber))->atttypid;
 
 	getTypeOutputInfo(typoid, &foutoid, &typisvarlena);
 
@@ -1208,7 +1208,7 @@ SPI_gettype(TupleDesc tupdesc, int fnumber)
 	if (fnumber > 0)
 		typoid = TupleDescAttr(tupdesc, fnumber - 1)->atttypid;
 	else
-		typoid = (SystemAttributeDefinition(tupdesc->attrs[0].attrelid, fnumber))->atttypid;
+		typoid = (SystemAttributeDefinition(fnumber))->atttypid;
 
 	typeTuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(typoid));
 
@@ -1244,7 +1244,7 @@ SPI_gettypeid(TupleDesc tupdesc, int fnumber)
 	if (fnumber > 0)
 		return TupleDescAttr(tupdesc, fnumber - 1)->atttypid;
 	else
-		return (SystemAttributeDefinition(tupdesc->attrs[0].attrelid, fnumber))->atttypid;
+		return (SystemAttributeDefinition(fnumber))->atttypid;
 }
 
 char *

@@ -25,8 +25,6 @@
 #define MaxCommandIdAttributeNumber				(-5)
 #define TableOidAttributeNumber					(-6)
 #define GpSegmentIdAttributeNumber			    (-7)    /*CDB*/
-#define DirectoryTableScopedUrlAttributeNumber	(-8)
-#define DirectoryTableContentAttributeNumber	(-9)
-#define FirstLowInvalidHeapAttributeNumber		(-10)
+#define FirstLowInvalidHeapAttributeNumber		(-8)
 
 #endif							/* SYSATTR_H */

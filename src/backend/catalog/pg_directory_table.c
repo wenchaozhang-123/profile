@@ -187,6 +187,7 @@ GetDirectoryTable(Oid relId)
 	dirTable = (DirectoryTable *) palloc(sizeof(DirectoryTable));
 	dirTable->relId = relId;
 	dirTable->spcId = dirtableForm->dttablespace;
+	GetTablespaceFileHandler(dirtableForm->dttablespace);
 
 	datum = SysCacheGetAttr(DIRECTORYTABLEREL,
 							tuple,

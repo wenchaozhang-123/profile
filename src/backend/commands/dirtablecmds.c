@@ -27,6 +27,7 @@
 #include "catalog/objectaccess.h"
 #include "catalog/oid_dispatch.h"
 #include "catalog/pg_collation.h"
+#include "catalog/pg_directory_table.h"
 #include "catalog/pg_opclass.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_tablespace.h"
@@ -64,6 +65,8 @@ typedef struct TableFunctionContext
 	TupleTableSlot	*slot;
 	DirectoryTable 	*dirTable;
 } TableFunctionContext;
+
+Datum directory_table(PG_FUNCTION_ARGS);
 
 static Oid
 chooseTableSpace(CreateDirectoryTableStmt *stmt)
@@ -172,8 +175,8 @@ CreateDirectoryTable(CreateDirectoryTableStmt *stmt, Oid relId)
 	LWLockRelease(DirectoryTableLock);
 }
 
-Datum
-GetFileContent(Oid spcId, char *filePath)
+static Datum
+getFileContent(Oid spcId, char *scopedFileUrl)
 {
 	char 	errorMessage[256];
 	char 	buffer[4096];
@@ -220,10 +223,121 @@ GetFileContent(Oid spcId, char *filePath)
 	PG_RETURN_BYTEA_P(content);
 }
 
-char *
-GetFilePath(DirectoryTable *dirTable, char *relativePath)
+static char *
+getScopedFileUrl(DirectoryTable *dirTable, char *relativePath)
 {
 	return psprintf("%s/%s", dirTable->location, relativePath);
+}
+
+Datum
+directory_table(PG_FUNCTION_ARGS)
+{
+#define DIRECTORY_TABLE_FUNCTION_COLUMNS	7
+	Oid			relId = PG_GETARG_OID(0);
+	Datum 		values[DIRECTORY_TABLE_FUNCTION_COLUMNS];
+	bool 		nulls[DIRECTORY_TABLE_FUNCTION_COLUMNS];
+	HeapTuple 	tuple;
+	Datum 		result;
+	FuncCallContext *funcCtx;
+	TableFunctionContext *context;
+
+	if (SRF_IS_FIRSTCALL())
+	{
+		Snapshot 		snapshot;
+		TupleDesc 		newTupDesc;
+		MemoryContext	oldContext;
+
+		funcCtx = SRF_FIRSTCALL_INIT();
+
+		oldContext = MemoryContextSwitchTo(funcCtx->multi_call_memory_ctx);
+
+		newTupDesc = CreateTemplateTupleDesc(DIRECTORY_TABLE_FUNCTION_COLUMNS);
+		TupleDescInitEntry(newTupDesc, (AttrNumber) 1, "scoped_file_url", TEXTOID, -1, 0);
+		TupleDescInitEntry(newTupDesc, (AttrNumber) 2, "relative_path", TEXTOID, -1, 0);
+		TupleDescInitEntry(newTupDesc, (AttrNumber) 3, "tag", TEXTOID, -1, 0);
+		TupleDescInitEntry(newTupDesc, (AttrNumber) 4, "size", INT8OID, -1, 0);
+		TupleDescInitEntry(newTupDesc, (AttrNumber) 5, "last_modified", TIMESTAMPTZOID, -1, 0);
+		TupleDescInitEntry(newTupDesc, (AttrNumber) 6, "md5", TEXTOID, -1, 0);
+		TupleDescInitEntry(newTupDesc, (AttrNumber) 7, "content", BYTEAOID, -1, 0);
+
+		funcCtx->tuple_desc = BlessTupleDesc(newTupDesc);
+
+		context = (TableFunctionContext *) palloc0(sizeof(TableFunctionContext));
+		context->relation = table_open(relId, AccessShareLock);
+
+		SIMPLE_FAULT_INJECTOR("directory_table_inject");
+
+		if (!RelationIsDirectoryTable(relId))
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("'%s' is not a directory table",
+							RelationGetRelationName(context->relation))));
+
+		context->slot = MakeSingleTupleTableSlot(RelationGetDescr(context->relation),
+										   		 table_slot_callbacks(context->relation));
+		context->dirTable = GetDirectoryTable(RelationGetRelid(context->relation));
+
+		snapshot = GetLatestSnapshot();
+		context->scanDesc = table_beginscan(context->relation, snapshot, 0, NULL);
+
+		funcCtx->user_fctx = (void *) context;
+
+		MemoryContextSwitchTo(oldContext);
+	}
+
+	funcCtx = SRF_PERCALL_SETUP();
+	context = (TableFunctionContext *) funcCtx->user_fctx;
+
+	if (table_scan_getnextslot(context->scanDesc, ForwardScanDirection, context->slot))
+	{
+		Datum attrRelativePath;
+		Datum attrSize;
+		Datum attrLastModified;
+		Datum attrMd5Sum;
+		Datum attrTags;
+		bool  isNull;
+		char  *scopedFileUrl;
+
+		slot_getallattrs(context->slot);
+
+		attrRelativePath  = slot_getattr(context->slot, 1, &isNull);
+		Assert(isNull == false);
+		attrSize = slot_getattr(context->slot, 2, &isNull);
+		Assert(isNull == false);
+		attrLastModified = slot_getattr(context->slot, 3, &isNull);
+		Assert(isNull == false);
+		attrMd5Sum = slot_getattr(context->slot, 4, &isNull);
+		Assert(isNull == false);
+		attrTags = slot_getattr(context->slot, 5, &isNull);
+
+		MemSet(values, 0, sizeof(values));
+		MemSet(nulls, 0, sizeof(nulls));
+
+		scopedFileUrl = getScopedFileUrl(context->dirTable, TextDatumGetCString(attrRelativePath));
+
+		values[0] = PointerGetDatum(cstring_to_text(scopedFileUrl));
+		values[1] = attrRelativePath;
+		values[2] = attrTags;
+		nulls[2] = isNull;
+		values[3] = attrSize;
+		values[4] = attrLastModified;
+		values[5] = attrMd5Sum;
+		values[6] = getFileContent(context->dirTable->spcId, scopedFileUrl);
+
+		tuple = heap_form_tuple(funcCtx->tuple_desc, values, nulls);
+		result = HeapTupleGetDatum(tuple);
+
+		SRF_RETURN_NEXT(funcCtx, result);
+	}
+
+	table_endscan(context->scanDesc);
+	ExecDropSingleTupleTableSlot(context->slot);
+	table_close(context->relation, AccessShareLock);
+
+	pfree(context);
+	funcCtx->user_fctx = NULL;
+
+	SRF_RETURN_DONE(funcCtx);
 }
 
 Datum

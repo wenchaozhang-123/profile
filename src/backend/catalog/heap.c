@@ -284,39 +284,7 @@ static FormData_pg_attribute a8 = {
 	.attislocal = true,
 };
 
-/* scoped url of  directory table */
-static FormData_pg_attribute dta1 = {
-	.attname = {"file_path"},
-	.atttypid = TEXTOID,
-	.attlen = -1,
-	.attnum = DirectoryTableScopedUrlAttributeNumber,
-	.attcacheoff = -1,
-	.atttypmod = -1,
-	.attbyval = false,
-	.attstorage = 'x',
-	.attalign = 'i',
-	.attnotnull = false,
-	.attislocal = true,
-};
-
-/* content of directory table */
-static FormData_pg_attribute dta2 = {
-	.attname = {"file_content"},
-	.atttypid = BYTEAOID,
-	.attlen = -1,
-	.attnum = DirectoryTableContentAttributeNumber,
-	.attcacheoff = -1,
-	.atttypmod = -1,
-	.attbyval = false,
-	.attstorage = 'x',
-	.attalign = 'i',
-	.attnotnull = false,
-	.attislocal = true,
-};
-
 static const FormData_pg_attribute *SysAtt[] = {&a1, &a2, &a3, &a4, &a5, &a6, &a8};
-
-static const FormData_pg_attribute *DirtableSysAtt[] = {&dta1, &dta2};
 
 /*
  * This function returns a Form_pg_attribute pointer for a system attribute.
@@ -324,25 +292,11 @@ static const FormData_pg_attribute *DirtableSysAtt[] = {&dta1, &dta2};
  * happen if there's a problem upstream.
  */
 const FormData_pg_attribute *
-SystemAttributeDefinition(Oid relId, AttrNumber attno)
+SystemAttributeDefinition(AttrNumber attno)
 {
-	if (OidIsValid(relId) && RelationIsDirectoryTable(relId))
-	{
-		if (attno >= 0 || attno < -(int) (lengthof(SysAtt) + lengthof(DirtableSysAtt)))
-			elog(ERROR, "invalid directory table system attribute number %d", attno);
-
-		if (attno < -(int) lengthof(SysAtt))
-			return DirtableSysAtt[-attno - lengthof(SysAtt) - 1];
-		else
-			return SysAtt[-attno - 1];
-	}
-	else
-	{
-		if (attno >= 0 || attno < -(int) lengthof(SysAtt))
-			elog(ERROR, "invalid system attribute number %d", attno);
-
-		return SysAtt[-attno - 1];
-	}
+	if (attno >= 0 || attno < -(int) lengthof(SysAtt))
+		elog(ERROR, "invalid system attribute number %d", attno);
+	return SysAtt[-attno - 1];
 }
 
 /*
@@ -360,14 +314,6 @@ SystemAttributeByName(const char *attname)
 
 		if (strcmp(NameStr(att->attname), attname) == 0)
 			return att;
-	}
-
-	for (j = 0; j < (int) lengthof(DirtableSysAtt); j++)
-	{
-		const FormData_pg_attribute *dirtableatt = DirtableSysAtt[j];
-
-		if (strcmp(NameStr(dirtableatt->attname), attname) == 0)
-			return dirtableatt;
 	}
 
 	return NULL;
@@ -1250,7 +1196,6 @@ AddNewAttributeTuples(Oid new_rel_oid,
 	int			natts = tupdesc->natts;
 	ObjectAddress myself,
 				referenced;
-	FormData_pg_attribute **dirtableSysAtt;
 
 	/*
 	 * open pg_attribute and its indexes.
@@ -1292,10 +1237,7 @@ AddNewAttributeTuples(Oid new_rel_oid,
 	{
 		TupleDesc	td;
 
-		dirtableSysAtt = palloc0(sizeof(FormData_pg_attribute *) * (lengthof(SysAtt) + lengthof(DirtableSysAtt)));
-		memcpy(dirtableSysAtt, SysAtt, sizeof(FormData_pg_attribute *) * lengthof(SysAtt));
-		memcpy(dirtableSysAtt + lengthof(SysAtt), DirtableSysAtt, sizeof(FormData_pg_attribute *) * lengthof(DirtableSysAtt));
-		td = CreateTupleDesc(lengthof(SysAtt) + lengthof(DirtableSysAtt), dirtableSysAtt);
+		td = CreateTupleDesc(lengthof(SysAtt), (FormData_pg_attribute **) &SysAtt);
 
 		InsertPgAttributeTuples(rel, td, new_rel_oid, NULL, indstate);
 		FreeTupleDesc(td);

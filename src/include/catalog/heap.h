@@ -163,7 +163,7 @@ extern void RemoveAttrDefaultById(Oid attrdefId);
 extern void CopyStatistics(Oid fromrelid, Oid torelid);
 extern void RemoveStatistics(Oid relid, AttrNumber attnum);
 
-extern const FormData_pg_attribute *SystemAttributeDefinition(Oid relId, AttrNumber attno);
+extern const FormData_pg_attribute *SystemAttributeDefinition(AttrNumber attno);
 
 extern const FormData_pg_attribute *SystemAttributeByName(const char *attname);
 

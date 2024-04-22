@@ -3444,7 +3444,7 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 				attform = TupleDescAttr(heap_rel->rd_att, attnum - 1);
 			}
 			else
-				attform = SystemAttributeDefinition(InvalidOid, attnum);
+				attform = SystemAttributeDefinition(attnum);
 			attname = pstrdup(NameStr(attform->attname));
 
 			if (i < index_form->indnkeyatts)

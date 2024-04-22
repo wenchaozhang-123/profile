@@ -15,13 +15,10 @@
 #ifndef DIRTABLECMDS_H
 #define DIRTABLECMDS_H
 
-#include "catalog/pg_directory_table.h"
 #include "catalog/objectaddress.h"
 #include "nodes/params.h"
 #include "parser/parse_node.h"
 
-extern void CreateDirectoryTable(CreateDirectoryTableStmt *stmt, Oid relId);
-extern char *GetFilePath(DirectoryTable *dirTable, char *relativePath);
-extern Datum GetFileContent(Oid spcId, char *filePath);
+void CreateDirectoryTable(CreateDirectoryTableStmt *stmt, Oid relId);
 
 #endif //DIRTABLECMDS_H

@@ -25,7 +25,6 @@
 #include "access/table.h"
 #include "catalog/heap.h"
 #include "catalog/namespace.h"
-#include "catalog/pg_directory_table.h"
 #include "catalog/pg_proc_callback.h"
 #include "catalog/pg_type.h"
 #include "funcapi.h"
@@ -741,7 +740,7 @@ scanNSItemForColumn(ParseState *pstate, ParseNamespaceItem *nsitem,
 		/* System column, so use predetermined type data */
 		const FormData_pg_attribute *sysatt;
 
-		sysatt = SystemAttributeDefinition(rte->relid, attnum);
+		sysatt = SystemAttributeDefinition(attnum);
 		var = makeVar(nsitem->p_rtindex,
 					  attnum,
 					  sysatt->atttypid,
@@ -3497,7 +3496,7 @@ get_rte_attribute_name(RangeTblEntry *rte, AttrNumber attnum)
     if (attnum < 0 &&
         attnum > FirstLowInvalidHeapAttributeNumber)
     {
-		const FormData_pg_attribute *att_tup = SystemAttributeDefinition(rte->relid, attnum);
+		const FormData_pg_attribute *att_tup = SystemAttributeDefinition(attnum);
 
 		return pstrdup(NameStr(att_tup->attname));
     }
@@ -3761,7 +3760,7 @@ attnumAttName(Relation rd, int attid)
 	{
 		const FormData_pg_attribute *sysatt;
 
-		sysatt = SystemAttributeDefinition(rd->rd_id, attid);
+		sysatt = SystemAttributeDefinition(attid);
 		return &sysatt->attname;
 	}
 	if (attid > rd->rd_att->natts)
@@ -3783,7 +3782,7 @@ attnumTypeId(Relation rd, int attid)
 	{
 		const FormData_pg_attribute *sysatt;
 
-		sysatt = SystemAttributeDefinition(rd->rd_id, attid);
+		sysatt = SystemAttributeDefinition(attid);
 		return sysatt->atttypid;
 	}
 	if (attid > rd->rd_att->natts)

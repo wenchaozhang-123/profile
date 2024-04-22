@@ -1128,7 +1128,7 @@ get_atttypetypmodcoll(Oid relid, AttrNumber attnum,
 	{
 		const FormData_pg_attribute *sysatt_tup;
 
-		sysatt_tup = SystemAttributeDefinition(relid, attnum);
+		sysatt_tup = SystemAttributeDefinition(attnum);
 		*typid = sysatt_tup->atttypid;
 		*typmod = sysatt_tup->atttypmod;
 		*collid = sysatt_tup->attcollation;
