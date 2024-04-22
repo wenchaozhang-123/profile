@@ -188,7 +188,7 @@ getFileContent(Oid spcId, char *scopedFileUrl)
 	int64 	fileSize;
 
 	file = UFileOpen(spcId,
-				  	 filePath,
+					 scopedFileUrl,
 				  	 O_RDONLY,
 				  	 errorMessage,
 				  	 sizeof(errorMessage));
@@ -196,7 +196,7 @@ getFileContent(Oid spcId, char *scopedFileUrl)
 	if (file == NULL)
 		ereport(ERROR,
 					(errcode(ERRCODE_INTERNAL_ERROR),
-					 errmsg("failed to open file \"%s\": %s,", filePath, errorMessage)));
+					 errmsg("failed to open file \"%s\": %s,", scopedFileUrl, errorMessage)));
 
 	fileSize = UFileSize(file);
 	content = (bytea *) palloc(fileSize + VARHDRSZ);
@@ -209,7 +209,7 @@ getFileContent(Oid spcId, char *scopedFileUrl)
 		if (bytesRead == -1)
 			ereport(ERROR,
 					(errcode(ERRCODE_INTERNAL_ERROR),
-					 errmsg("failed to read file \"%s\": %s", filePath, UFileGetLastError(file))));
+					 errmsg("failed to read file \"%s\": %s", scopedFileUrl, UFileGetLastError(file))));
 
 		if (bytesRead == 0)
 			break;
