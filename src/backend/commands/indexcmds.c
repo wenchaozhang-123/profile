@@ -31,6 +31,7 @@
 #include "catalog/indexing.h"
 #include "catalog/pg_am.h"
 #include "catalog/pg_constraint.h"
+#include "catalog/pg_directory_table.h"
 #include "catalog/pg_inherits.h"
 #include "catalog/pg_opclass.h"
 #include "catalog/pg_opfamily.h"
@@ -703,6 +704,9 @@ DefineIndex(Oid relationId,
 	int			i;
 	bool		shouldDispatch;
 	Oid			blkdirrelid = InvalidOid;
+
+	if (RelationIsDirectoryTable(relationId))
+		elog(ERROR, "Disallowed to create index on directory table %u.", relationId);
 
 	shouldDispatch = (Gp_role == GP_ROLE_DISPATCH &&
 					  ENABLE_DISPATCH() &&
