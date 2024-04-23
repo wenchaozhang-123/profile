@@ -1881,12 +1881,12 @@ dumpTablespaces(PGconn *conn)
 
 		appendPQExpBufferStr(buf, " LOCATION ");
 		appendStringLiteralConn(buf, spclocation, conn);
-		if (spchandlersrc && spchandlersrc[0] != '\0')
+		if (spchandlerbin && spchandlerbin[0] != '\0')
 		{
 			appendPQExpBufferStr(buf, " HANDLER ");
-			appendStringLiteralConn(buf, spchandlersrc, conn);
-			appendPQExpBufferStr(buf, ", ");
 			appendStringLiteralConn(buf, spchandlerbin, conn);
+			appendPQExpBufferStr(buf, ", ");
+			appendStringLiteralConn(buf, spchandlersrc, conn);
 		}
 		appendPQExpBufferStr(buf, ";\n");
 

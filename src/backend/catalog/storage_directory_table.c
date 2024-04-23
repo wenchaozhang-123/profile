@@ -118,6 +118,17 @@ DirectoryTableDropStorage(Relation rel)
 	pendingDeleteUFiles = pending;
 
 	pfree(filePath);
+
+	/*
+	 * Make sure the connection to the corresponding tablespace has
+	 * been cached.
+	 *
+	 * UFileDoDeletesActions->UFileUnlink is called outside of the
+	 * transaction, if we don't establish a connection here. we may
+	 * face the issus of accessing the catalog outside of the
+	 * transaction.
+	 */
+	forceCacheUFileResource(dirTable->spcId);
 }
 
 void
@@ -137,6 +148,12 @@ UFileAddCreatePendingEntry(Relation rel, Oid spcId, char *relativePath)
 	pending->next = pendingDeleteUFiles;
 
 	pendingDeleteUFiles = pending;
+
+	/*
+	 * Make sure the spccache to the corresponding tablespace has
+	 * been cached.
+	 */
+	forceCacheUFileResource(spcId);
 }
 
 void
@@ -156,6 +173,12 @@ UFileAddDeletePendingEntry(Relation rel, Oid spcId, char *relativePath)
 	pending->next = pendingDeleteUFiles;
 
 	pendingDeleteUFiles = pending;
+
+	/*
+	 * Make sure the spccache to the corresponding tablespace has
+	 * been cached.
+	 */
+	forceCacheUFileResource(spcId);
 }
 
 void

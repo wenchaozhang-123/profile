@@ -966,7 +966,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 		hashCtx = pg_cryptohash_create(PG_MD5);
 		if (hashCtx == NULL)
 			ereport(ERROR,
-						(errcode(ERRCODE_INTERNAL_ERROR),
+						(errcode(ERRCODE_OUT_OF_MEMORY),
 						 errmsg("failed to create md5hash context: out of memory")));
 		pg_cryptohash_init(hashCtx);
 
@@ -992,8 +992,8 @@ CopyFromDirectoryTable(CopyFromState cstate)
 		}
 
 		pg_cryptohash_final(hashCtx, md5Sum, sizeof(md5Sum));
-		bytesToHex(md5Sum, hexMd5Sum);
 		pg_cryptohash_free(hashCtx);
+		bytesToHex(md5Sum, hexMd5Sum);
 
 		formDirTableSlot(cstate,
 						 dirTable->spcId,
@@ -1133,7 +1133,7 @@ CopyFromDirectoryTable(CopyFromState cstate)
 						 	sizeof(errorMessage));
 			if (file == NULL)
 				ereport(ERROR,
-							(errcode(ERRCODE_INTERNAL_ERROR),
+							(errcode(ERRCODE_IO_ERROR),
 						 	 errmsg("failed to open file \"%s\": %s", orgiFileName, errorMessage)));
 
 			/* Delete uploaded file when the transaction fails */
@@ -1151,10 +1151,15 @@ CopyFromDirectoryTable(CopyFromState cstate)
 
 			if (UFileWrite(file, decode_file, decode_file_len) == -1)
 				ereport(ERROR,
-							(errcode(ERRCODE_INTERNAL_ERROR),
+							(errcode(ERRCODE_IO_ERROR),
 							 errmsg("failed to write file \"%s\": %s", orgiFileName, UFileGetLastError(file))));
 
-			fileSize = strlen(file_buf);
+			if (UFileSync(file) != 0)
+				ereport(ERROR,
+							(errcode(ERRCODE_IO_ERROR),
+							 errmsg("unable to sync file \"%s\": %s", glob_copystmt->dirfilename, UFileGetLastError(file))));
+
+			UFileClose(file);
 
 			ExecClearTuple(myslot);
 			ExecClearTuple(tmpslot);

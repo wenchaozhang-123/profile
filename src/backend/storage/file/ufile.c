@@ -39,6 +39,7 @@ typedef struct LocalFile
 static UFile *localFileOpen(Oid spcId, const char *fileName, int fileFlags,
 							char *errorMessage, int errorMessageSize);
 static void localFileClose(UFile *file);
+static int localFileSync(UFile *file);
 static int	localFileRead(UFile *file, char *buffer, int amount);
 static int	localFileWrite(UFile *file, char *buffer, int amount);
 static off_t localFileSize(UFile *file);
@@ -48,12 +49,14 @@ static bool localEnsurePath(Oid spcId, const char *PathName);
 static bool localFileExists(Oid spcId, const char *fileName);
 static const char *localFileName(UFile *file);
 static const char *localGetLastError(void);
+static void localGetConnection(Oid spcId);
 
 static char localFileErrorStr[UFILE_ERROR_SIZE];
 
 struct FileAm localFileAm = {
 	.open = localFileOpen,
 	.close = localFileClose,
+	.sync = localFileSync,
 	.read = localFileRead,
 	.write = localFileWrite,
 	.size = localFileSize,
@@ -63,6 +66,7 @@ struct FileAm localFileAm = {
 	.exists = localFileExists,
 	.name = localFileName,
 	.getLastError = localGetLastError,
+	.getConnection = localGetConnection,
 };
 
 static UFile *
@@ -96,6 +100,19 @@ localFileClose(UFile *file)
 	LocalFile *localFile = (LocalFile *) file;
 
 	FileClose(localFile->file);
+}
+
+static int
+localFileSync(UFile *file)
+{
+	int result;
+	LocalFile *localFile = (LocalFile *) file;
+
+	result = FileSync(localFile->file, WAIT_EVENT_DATA_FILE_SYNC);
+	if (result == -1)
+		snprintf(localFileErrorStr, UFILE_ERROR_SIZE, "%s", strerror(errno));
+
+	return result;
 }
 
 static int
@@ -335,6 +352,12 @@ localGetLastError(void)
 	return localFileErrorStr;
 }
 
+void
+localGetConnection(Oid spcId)
+{
+	return;
+}
+
 UFile *
 UFileOpen(Oid spcId,
 		  const char *fileName,
@@ -357,6 +380,12 @@ UFileClose(UFile *file)
 	file->methods->close(file);
 	//TODO pfree move to close
 	pfree(file);
+}
+
+int
+UFileSync(UFile *file)
+{
+	return file->methods->sync(file);
 }
 
 int
@@ -427,5 +456,15 @@ const char *
 UFileGetLastError(UFile *file)
 {
 	return file->methods->getLastError();
+}
+
+void
+forceCacheUFileResource(Oid spcId)
+{
+	FileAm *fileAm;
+
+	fileAm = GetTablespaceFileHandler(spcId);
+
+	return fileAm->getConnection(spcId);
 }
 
