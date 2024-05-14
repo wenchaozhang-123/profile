@@ -149,8 +149,6 @@ class gpdirtableload:
         self.options = args
         self.options.password = None
         self.options.max_retries = 3
-        self.options.qv = self.INFO
-        
         self.exitValue = 0
         self.dbs = []
         self.DEBUG = 5
@@ -158,6 +156,7 @@ class gpdirtableload:
         self.INFO = 3
         self.WARN = 2
         self.ERROR = 1
+        self.options.qv = self.INFO
         self.startTimestamp = time.time()
         self.pool = None
 
