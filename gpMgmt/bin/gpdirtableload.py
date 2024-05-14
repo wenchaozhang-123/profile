@@ -148,21 +148,8 @@ class gpdirtableload:
         self.exitValue = 0
         self.dbs = []
         self.options = options()
-        self.options.database = 'gpadmin'
-        self.options.dest_path = None
-        self.options.force_password_auth = False
-        self.options.host = None
-        self.options.input_file = None
-        self.options.logfile = None
-        self.options.port = 5432
         self.options.password = None
         self.options.max_retries = 3
-        self.options.stop_on_error = False
-        self.options.table = None
-        self.options.tag = None
-        self.options.tasks = 1
-        self.options.user = None
-        self.options.verbose = False
         self.DEBUG = 5
         self.LOG = 4
         self.INFO = 3
@@ -173,20 +160,7 @@ class gpdirtableload:
         self.pool = None
 
         args, parser = parseargs()
-
-        self.options.database = args.database
-        self.options.dest_path = args.dest_path
-        self.options.force_password_auth = args.force_password_auth
-        self.options.host = args.host
-        self.options.input_file = args.input_file
-        self.options.logfile = args.logfile
-        self.options.port = args.port
-        self.options.stop_on_error = args.stop_on_error
-        self.options.table = args.table
-        self.options.tag = args.tag
-        self.options.tasks = args.tasks
-        self.options.user = args.user
-        self.options.verbose = args.verbose
+        self.options = args
 
         # set default log level
         if self.options.verbose is not None:
