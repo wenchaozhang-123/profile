@@ -71,7 +71,7 @@ def parseargs():
     parser.add_argument('--force-password-auth',
                         help='Force a password prompt (default false)')
 
-    parser.add_argument('--host', '-h', default="localhost",
+    parser.add_argument('--host', default="localhost",
                         help='Host to connect to (default localhost)')
     parser.add_argument('--input-file', help='Input files or directory')
 
@@ -144,23 +144,22 @@ class gpdirtableload:
     """
 
     def __init__(self, argv):
-        self.threads = []  # remember threads so that we can join() against them
-        self.exitValue = 0
-        self.dbs = []
+        args, parser = parseargs()
         self.options = options()
+        self.options = args
         self.options.password = None
         self.options.max_retries = 3
+        self.options.qv = self.INFO
+        
+        self.exitValue = 0
+        self.dbs = []
         self.DEBUG = 5
         self.LOG = 4
         self.INFO = 3
         self.WARN = 2
         self.ERROR = 1
-        self.options.qv = self.INFO
         self.startTimestamp = time.time()
         self.pool = None
-
-        args, parser = parseargs()
-        self.options = args
 
         # set default log level
         if self.options.verbose is not None:
