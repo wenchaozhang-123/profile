@@ -35,6 +35,8 @@
 -1U: CREATE TABLE aoco_foo (n int, m int) WITH (appendonly=true, orientation=column);
 
 -- Switch WAL file
+SELECT * FROM pg_class WHERE relfilenode = 180445;
+select * from pg_class where oid = 180445;
 -1U: SELECT true FROM pg_switch_wal();
 -- Insert data (AO)
 -1U: INSERT INTO ao_foo SELECT generate_series(1,10);
