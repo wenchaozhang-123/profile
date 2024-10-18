@@ -1765,6 +1765,10 @@ RemoveRelations(DropStmt *drop)
 
 	foreach(cell, drop->objects)
 	{
+		DropDirectoryTableStmt *dirtable_drop =  (DropDirectoryTableStmt *) drop;
+		if (!dirtable_drop->with_content)
+			continue;
+
 		RangeVar   *rel = makeRangeVarFromNameList((List *) lfirst(cell));
 		Oid			relOid;
 		ObjectAddress obj;
