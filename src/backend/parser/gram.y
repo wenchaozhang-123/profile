@@ -831,7 +831,7 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARCHAR VARIADIC VARYING
 	VERBOSE VERSION_P VIEW VIEWS VOLATILE
 
-	WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WITH_CONTENT WORK WRAPPER WRITE
+	WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
 
 	XML_P XMLATTRIBUTES XMLCONCAT XMLELEMENT XMLEXISTS XMLFOREST XMLNAMESPACES
 	XMLPARSE XMLPI XMLROOT XMLSERIALIZE XMLTABLE
@@ -1227,7 +1227,6 @@ static void check_expressions_in_partition_key(PartitionSpec *spec, core_yyscan_
 			%nonassoc WITH
 			%nonassoc WITHIN
 			%nonassoc WITHOUT
-			%nonassoc WITH_CONTENT
 			%nonassoc WORK
 			%nonassoc WRITABLE
 			%nonassoc WRITE
@@ -3888,7 +3887,7 @@ opt_drop_behavior:
 		;
 
 opt_drop_directory_table_behavior:
-			WITH_CONTENT				{ $$ = true; }
+			WITH CONTENT				{ $$ = true; }
 			| /* EMPTY */				{ $$ = false; }
 
 opt_collate_clause:
@@ -8527,7 +8526,7 @@ AlterDirectoryTableStmt:
  *		QUERY:
  *
  *		DROP DIRECTORY TABLE [ IF EXISTS ] tablename [, tablename ...]
- *           [ RESTRICT | CASCADE ] [WITH_CONTENT]
+ *           [ RESTRICT | CASCADE ] [WITH CONTENT]
  *
  *****************************************************************************/
 
@@ -19702,7 +19701,6 @@ unreserved_keyword:
 			| WHITESPACE_P
 			| WITHIN
 			| WITHOUT
-			| WITH_CONTENT
 			| WORK
 			| WRAPPER
 			| WRITABLE
@@ -20709,7 +20707,6 @@ bare_label_keyword:
 			| WEB
 			| WHEN
 			| WHITESPACE_P
-			| WITH_CONTENT
 			| WORK
 			| WRAPPER
 			| WRITABLE
