@@ -4056,7 +4056,7 @@ _outDropStmtInfo(StringInfo str, const DropStmt *node)
 }
 
 static void
-_outDropDirectoryTableStmt(String str, const DropDirectoryTableStmt *node)
+_outDropDirectoryTableStmt(StringInfo str, const DropDirectoryTableStmt *node)
 {
 	WRITE_NODE_TYPE("DROPDIRECTORYTABLESTMT");
 
