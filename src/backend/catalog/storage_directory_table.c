@@ -28,6 +28,8 @@
 #include "utils/rel.h"
 #include "cdb/cdbvars.h"
 
+bool allow_dml_directory_table = false;
+
 /*
  * TODO: support ufile pending delete xlog
  *

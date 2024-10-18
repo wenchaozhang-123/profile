@@ -14,6 +14,8 @@
 
 #include "utils/relcache.h"
 
+extern bool allow_dml_directory_table;
+
 extern void UFileAddPendingDelete(Relation rel, Oid spcId, char *relativePath, bool atCommit);
 extern void DirectoryTableDropStorage(Relation rel);
 
