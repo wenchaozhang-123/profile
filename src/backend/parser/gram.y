@@ -20709,6 +20709,7 @@ bare_label_keyword:
 			| WEB
 			| WHEN
 			| WHITESPACE_P
+			| WITH_CONTENT
 			| WORK
 			| WRAPPER
 			| WRITABLE
