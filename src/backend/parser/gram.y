@@ -3887,7 +3887,7 @@ opt_drop_behavior:
 		;
 
 opt_drop_directory_table_behavior:
-			WITH CONTENT				{ $$ = true; }
+			WITH CONTENT_P				{ $$ = true; }
 			| /* EMPTY */				{ $$ = false; }
 
 opt_collate_clause:
